@@ -1,0 +1,22 @@
+node_modules
+.next
+out
+build
+.DS_Store
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# Anchor / Solana
+target
+programs/*/target
+*.keypair.json
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
