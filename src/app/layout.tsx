@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { WalletProvider } from "@/lib/wallet/wallet-context";
+import { AppProviders } from "@/components/app-providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +13,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
-        <WalletProvider>{children}</WalletProvider>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );
