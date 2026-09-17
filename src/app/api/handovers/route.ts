@@ -31,6 +31,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const statusParam = searchParams.get("status");
     const assetId = searchParams.get("asset_id");
+    const fromWallet = searchParams.get("from_wallet");
+    const toWallet = searchParams.get("to_wallet");
 
     let query = supabase
       .from("handovers")
@@ -42,6 +44,12 @@ export async function GET(req: NextRequest) {
     }
     if (assetId) {
       query = query.eq("asset_id", assetId);
+    }
+    if (fromWallet) {
+      query = query.eq("from_wallet", fromWallet);
+    }
+    if (toWallet) {
+      query = query.eq("to_wallet", toWallet);
     }
 
     const { data, error } = await query;
@@ -69,13 +77,19 @@ export async function POST(req: NextRequest) {
 
     const asset = await supabase
       .from("assets")
-      .select("asset_code, status")
+      .select("id, asset_code, status, custodian_wallet")
       .eq("id", asset_id)
       .maybeSingle();
     if (asset.error) return errorResponse(asset.error.message, 500);
     if (!asset.data) return errorResponse("자산을 찾을 수 없습니다", 404);
     if (asset.data.status === "retired") {
       return errorResponse("폐기(retired) 상태 자산은 인수인계할 수 없습니다", 422);
+    }
+    if (
+      asset.data.custodian_wallet &&
+      asset.data.custodian_wallet !== from_wallet
+    ) {
+      return errorResponse("현재 담당자만 인계를 신청할 수 있습니다", 403);
     }
 
     const { data, error } = await supabase

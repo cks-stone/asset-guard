@@ -3,7 +3,7 @@ import { Program } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { createHash } from "crypto";
 import { expect } from "chai";
-import type { AssetGuard } from "../target/types/asset_guard";
+import type { AssetGuard } from "../src/lib/anchor/idl/asset_guard";
 
 describe("asset_guard — 인수인계 스마트컨트랙트", () => {
   const provider = anchor.AnchorProvider.env();

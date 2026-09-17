@@ -30,6 +30,7 @@ export interface HandoverRow {
   to_wallet: string;
   onchain_pda: string | null;
   onchain_status: HandoverStatus;
+  partial_tx: string | null;
   tx_signature: string | null;
   created_at: string;
   completed_at: string | null;
@@ -39,7 +40,9 @@ export type HandoverInsert = Pick<
   HandoverRow,
   "asset_id" | "asset_code" | "from_wallet" | "to_wallet"
 > &
-  Partial<Pick<HandoverRow, "onchain_pda" | "onchain_status" | "tx_signature">>;
+  Partial<
+    Pick<HandoverRow, "onchain_pda" | "onchain_status" | "partial_tx" | "tx_signature">
+  >;
 
 export type HandoverUpdate = Partial<
   Omit<HandoverRow, "id" | "asset_id" | "asset_code" | "created_at">
