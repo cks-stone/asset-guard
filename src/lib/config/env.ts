@@ -8,7 +8,10 @@ const devSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
 });
 
-const serverSchema = devSchema.extend({});
+const serverSchema = devSchema.extend({
+  // 관리자 지갑 화이트리스트 (콤마 구분 base58) — 서버 전용
+  ADMIN_WALLETS: z.string().optional(),
+});
 
 export type SolanaEnv = z.infer<typeof serverSchema>;
 
@@ -27,6 +30,7 @@ export function getEnv(): SolanaEnv {
       process.env.NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID,
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+    ADMIN_WALLETS: process.env.ADMIN_WALLETS,
   });
   if (!parsed.success) {
     const details = JSON.stringify(parsed.error.flatten().fieldErrors, null, 2);

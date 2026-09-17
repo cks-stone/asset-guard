@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getAdminWalletFromRequest } from "@/lib/admin";
 
 export const runtime = "nodejs";
 
@@ -44,6 +45,9 @@ export async function GET(_req: NextRequest, ctx: AssetRouteContext) {
 
 export async function PATCH(req: NextRequest, ctx: AssetRouteContext) {
   try {
+    if (!getAdminWalletFromRequest(req)) {
+      return errorResponse("관리자 지갑이 아닙니다", 401);
+    }
     const supabase = getSupabaseAdmin();
     const { id } = await ctx.params;
     const body = await req.json();
