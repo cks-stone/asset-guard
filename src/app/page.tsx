@@ -1,3 +1,5 @@
+import { WalletPanel } from "@/components/wallet-panel";
+
 export default function HomePage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-8">
@@ -9,6 +11,7 @@ export default function HomePage() {
       <code className="rounded bg-neutral-800 px-3 py-1 text-sm text-neutral-300">
         Solana Devnet / Anchor Program / Supabase / Resend
       </code>
+      <WalletPanel />
     </main>
   );
 }
