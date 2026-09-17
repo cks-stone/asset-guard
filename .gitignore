@@ -13,6 +13,7 @@ build
 target
 programs/*/target
 *.keypair.json
+.anchor
 
 # Vercel
 .vercel

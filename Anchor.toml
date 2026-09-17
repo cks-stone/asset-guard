@@ -1,0 +1,15 @@
+[features]
+resolver = "2"
+
+[programs.localnet]
+asset_guard = "5U6NZm5aNtzEeWEdzuZiciRbmFo8wLEzxBfcXnEjgkJ3"
+
+[programs.devnet]
+asset_guard = "5U6NZm5aNtzEeWEdzuZiciRbmFo8wLEzxBfcXnEjgkJ3"
+
+[provider]
+cluster = "localnet"
+wallet = "/Users/choiks/dogpanda-keypair.json"
+
+[scripts]
+test = "npm run test:anchor"
