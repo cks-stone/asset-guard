@@ -7,19 +7,40 @@ export const runtime = "nodejs";
 
 export type AssetRouteContext = { params: Promise<{ id: string }> };
 
-const updateAssetSchema = z.object({
-  asset_code: z.string().trim().min(1).max(64).optional(),
-  name: z.string().trim().min(1).max(200).optional(),
-  category: z.string().trim().max(100).nullable().optional(),
-  description: z.string().trim().max(2000).nullable().optional(),
-  custodian_wallet: z
-    .string()
-    .trim()
-    .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)
-    .nullable()
-    .optional(),
-  status: z.enum(["available", "in_use", "retired"]).optional(),
-});
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 형식이어야 합니다");
+
+const rentalFields = {
+  rental_type: z.enum(["company_owned", "leased"]).optional(),
+  rental_start_at: dateSchema.nullable().optional(),
+  rental_end_at: dateSchema.nullable().optional(),
+  rental_fee: z.number().min(0).nullable().optional(),
+  rental_terms: z.string().trim().max(2000).nullable().optional(),
+};
+
+const updateAssetSchema = z
+  .object({
+    asset_code: z.string().trim().min(1).max(64).optional(),
+    name: z.string().trim().min(1).max(200).optional(),
+    category: z.string().trim().max(100).nullable().optional(),
+    description: z.string().trim().max(2000).nullable().optional(),
+    custodian_wallet: z
+      .string()
+      .trim()
+      .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)
+      .nullable()
+      .optional(),
+    status: z.enum(["available", "in_use", "retired"]).optional(),
+    ...rentalFields,
+  })
+  .superRefine((val, ctx) => {
+    if (val.rental_start_at && val.rental_end_at && val.rental_end_at < val.rental_start_at) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "예정 반납일은 렌탈 시작일 이후여야 합니다",
+        path: ["rental_end_at"],
+      });
+    }
+  });
 
 function errorResponse(message: string, status = 500) {
   return NextResponse.json({ error: message }, { status });

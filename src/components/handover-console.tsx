@@ -162,7 +162,7 @@ export function HandoverConsole() {
       const json = await readJson(res);
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
       setResults((prev) => ({ ...prev, [h.id]: txSignature }));
-      setNotice("인수인계 확정. 담당자가 갱신되었습니다.");
+      setNotice("인수 확정. 렌탈 자산 담당자가 갱신되었습니다.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "최종 서명 실패");
@@ -174,7 +174,9 @@ export function HandoverConsole() {
   if (!connected) {
     return (
       <div className="w-full max-w-2xl rounded-xl border border-neutral-800 bg-neutral-900 p-6 text-center">
-        <p className="text-sm text-neutral-400">인수인계 콘솔 사용을 위해 지갑을 연결하세요.</p>
+        <p className="text-sm text-neutral-400">
+          렌탈 자산 콘솔 사용을 위해 지갑을 연결하세요.
+        </p>
         <button
           onClick={() => void connect()}
           className="mt-4 rounded bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-500"
@@ -199,14 +201,14 @@ export function HandoverConsole() {
       )}
 
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-        <h2 className="text-lg font-semibold">1. 인계 신청 (기존 담당자)</h2>
+        <h2 className="text-lg font-semibold">1. 인계 신청 (인계자 · 현재 렌탈 사용자)</h2>
         <div className="mt-4 space-y-3">
           <select
             value={selectedAssetId}
             onChange={(e) => setSelectedAssetId(e.target.value)}
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
           >
-            <option value="">내가 담당 중이거나 미배정인 자산 선택</option>
+            <option value="">내가 렌탈 중이거나 미배정인 렌탈 자산 선택</option>
             {myAssets.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.asset_code} — {a.name}
@@ -216,7 +218,7 @@ export function HandoverConsole() {
           <input
             value={toWallet}
             onChange={(e) => setToWallet(e.target.value)}
-            placeholder="신규 담당자 지갑 주소 (to)"
+            placeholder="신규 담당자(인수자) 지갑 주소 (to)"
             className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm font-mono"
           />
           <button
@@ -230,9 +232,11 @@ export function HandoverConsole() {
       </section>
 
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-        <h2 className="text-lg font-semibold">2. 인수 수락 (신규 담당자)</h2>
+        <h2 className="text-lg font-semibold">2. 인수 수락 (인수자 · 새 담당자)</h2>
         {asTo.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">나에게 신청된 인수인계가 없습니다.</p>
+          <p className="mt-3 text-sm text-neutral-500">
+            나에게 신청된 인계(인수인계)가 없습니다.
+          </p>
         ) : (
           <ul className="mt-3 space-y-3">
             {asTo.map((h) => (
@@ -260,7 +264,7 @@ export function HandoverConsole() {
       </section>
 
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-        <h2 className="text-lg font-semibold">3. 최종 확정 (기존 담당자)</h2>
+        <h2 className="text-lg font-semibold">3. 인수 확정 (인계자)</h2>
         {relayable.length === 0 ? (
           <p className="mt-3 text-sm text-neutral-500">
             인수자의 서명을 기다리는 인수인계가 없습니다.

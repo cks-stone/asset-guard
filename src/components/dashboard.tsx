@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@/lib/wallet/wallet-context";
-import type { AssetRow, HandoverRow } from "@/lib/supabase/types";
+import type { AssetRow, HandoverRow, RentalType } from "@/lib/supabase/types";
 
 async function readJson(res: Response): Promise<{ error?: string; [k: string]: unknown }> {
   try {
@@ -27,6 +27,19 @@ const handoverStatusBadge: Record<string, string> = {
 
 const shortAddr = (addr: string | null | undefined) =>
   addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
+
+const rentalTypeLabel: Record<RentalType, string> = {
+  company_owned: "회사 보유",
+  leased: "임대",
+};
+
+const fmtFee = (n: number | null | undefined) =>
+  n == null ? "" : `월 ${n.toLocaleString()}원`;
+
+const fmtPeriod = (a: AssetRow) => {
+  if (!a.rental_start_at && !a.rental_end_at) return "";
+  return `${a.rental_start_at ?? "?"} ~ ${a.rental_end_at ?? "?"}`;
+};
 
 export function Dashboard() {
   const { publicKey, connected, connect } = useWallet();
@@ -95,7 +108,7 @@ export function Dashboard() {
     return (
       <div className="w-full max-w-3xl rounded-xl border border-neutral-800 bg-neutral-900 p-10 text-center">
         <p className="text-sm text-neutral-400">
-          지갑을 연결하면 내 담당 자산과 인수인계 현황을 볼 수 있습니다.
+          지갑을 연결하면 내가 렌탈 중인 자산과 인수인계 현황을 볼 수 있습니다.
         </p>
         <button
           onClick={() => void connect()}
@@ -108,9 +121,9 @@ export function Dashboard() {
   }
 
   const stats = [
-    { label: "보유 자산", value: myAssets.length, accent: "text-emerald-300" },
+    { label: "내 렌탈 자산", value: myAssets.length, accent: "text-emerald-300" },
     { label: "수락 대기 (내게 신청)", value: pendingTo.length, accent: "text-amber-300" },
-    { label: "최종 확정 대기", value: relayable.length, accent: "text-blue-300" },
+    { label: "인수 확정 대기", value: relayable.length, accent: "text-blue-300" },
     { label: "완료 인수인계", value: completedHistory.length, accent: "text-neutral-200" },
   ];
 
@@ -132,13 +145,15 @@ export function Dashboard() {
 
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">내 담당 자산 ({myAssets.length})</h2>
+          <h2 className="text-lg font-semibold">내가 렌탈 중인 자산 ({myAssets.length})</h2>
           <Link href="/handover" className="text-xs text-violet-300 hover:text-violet-200">
-            인수인계 콘솔 →
+            렌탈 자산 콘솔 →
           </Link>
         </div>
         {myAssets.length === 0 ? (
-          <p className="mt-3 text-sm text-neutral-500">담당 중인 자산이 없습니다.</p>
+          <p className="mt-3 text-sm text-neutral-500">
+            현재 렌탈 중인 자산이 없습니다.
+          </p>
         ) : (
           <ul className="mt-4 space-y-2">
             {myAssets.map((a) => (
@@ -155,8 +170,24 @@ export function Dashboard() {
                 >
                   {a.status}
                 </span>
+                <span
+                  className={`rounded px-2 py-0.5 text-xs ${
+                    a.rental_type === "leased"
+                      ? "bg-amber-500/15 text-amber-300"
+                      : "bg-neutral-700/40 text-neutral-300"
+                  }`}
+                >
+                  {rentalTypeLabel[a.rental_type]}
+                </span>
                 {a.category && (
                   <span className="text-xs text-neutral-500">/{a.category}</span>
+                )}
+                {(fmtPeriod(a) || a.rental_fee != null) && (
+                  <span className="text-[10px] text-neutral-500">
+                    {fmtPeriod(a)}
+                    {fmtPeriod(a) && a.rental_fee != null ? " · " : ""}
+                    {fmtFee(a.rental_fee)}
+                  </span>
                 )}
               </li>
             ))}
@@ -187,17 +218,17 @@ export function Dashboard() {
                 >
                   {h.onchain_status}
                 </span>
-                <span className="text-xs text-neutral-500">
-                  인계자 {shortAddr(h.from_wallet)}
-                </span>
-                <span className="ml-auto">
-                  <Link
-                    href="/handover"
-                    className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-500"
-                  >
-                    수락하러 가기
-                  </Link>
-                </span>
+<span className="text-xs text-neutral-500">
+                    인계자 {shortAddr(h.from_wallet)}
+                  </span>
+                  <span className="ml-auto">
+                    <Link
+                      href="/handover"
+                      className="rounded bg-blue-600 px-3 py-1 text-xs text-white hover:bg-blue-500"
+                    >
+                      수락하러 가기
+                    </Link>
+                  </span>
               </li>
             ))}
           </ul>
@@ -207,7 +238,7 @@ export function Dashboard() {
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">
-            최종 확정 대기 — 인수자 서명 완료 ({relayable.length})
+            인수 확정 대기 — 인수자 서명 완료 ({relayable.length})
           </h2>
         </div>
         {relayable.length === 0 ? (
@@ -230,7 +261,7 @@ export function Dashboard() {
                     href="/handover"
                     className="rounded bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-500"
                   >
-                    최종 확정하기
+                    확정하기
                   </Link>
                 </span>
               </li>

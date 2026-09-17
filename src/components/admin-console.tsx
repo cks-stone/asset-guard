@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWallet } from "@/lib/wallet/wallet-context";
-import type { AssetRow, HandoverRow } from "@/lib/supabase/types";
+import type { AssetRow, HandoverRow, RentalType } from "@/lib/supabase/types";
 
 const WALLET_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
@@ -31,6 +31,19 @@ const handoverStatusBadge: Record<string, string> = {
 const shortAddr = (addr: string | null | undefined) =>
   addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
 
+const rentalTypeLabel: Record<RentalType, string> = {
+  company_owned: "회사 보유",
+  leased: "임대",
+};
+
+const fmtFee = (n: number | null | undefined) =>
+  n == null ? "" : `월 ${n.toLocaleString()}원`;
+
+const fmtPeriod = (a: AssetRow) => {
+  if (!a.rental_start_at && !a.rental_end_at) return "";
+  return `${a.rental_start_at ?? "?"} ~ ${a.rental_end_at ?? "?"}`;
+};
+
 export function AdminConsole() {
   const { publicKey, connected, connect } = useWallet();
   const [adminWallets, setAdminWallets] = useState<string[]>([]);
@@ -50,6 +63,11 @@ export function AdminConsole() {
     description: "",
     custodian_wallet: "",
     status: "available",
+    rental_type: "company_owned",
+    rental_start_at: "",
+    rental_end_at: "",
+    rental_fee: "",
+    rental_terms: "",
   });
 
   useEffect(() => {
@@ -106,10 +124,11 @@ export function AdminConsole() {
     setNotice(null);
     setError(null);
     try {
-      const body: Record<string, string | null> = {
+      const body: Record<string, string | number | null> = {
         asset_code: form.asset_code.trim(),
         name: form.name.trim(),
         status: form.status,
+        rental_type: form.rental_type as RentalType,
       };
       if (form.category.trim()) body.category = form.category.trim();
       else body.category = null;
@@ -123,6 +142,19 @@ export function AdminConsole() {
       } else {
         body.custodian_wallet = null;
       }
+      if (form.rental_start_at.trim()) body.rental_start_at = form.rental_start_at.trim();
+      else body.rental_start_at = null;
+      if (form.rental_end_at.trim()) body.rental_end_at = form.rental_end_at.trim();
+      else body.rental_end_at = null;
+      if (form.rental_fee.trim()) {
+        const fee = Number(form.rental_fee);
+        if (Number.isNaN(fee) || fee < 0) throw new Error("렌탈비는 0 이상 숫자여야 합니다");
+        body.rental_fee = fee;
+      } else {
+        body.rental_fee = null;
+      }
+      if (form.rental_terms.trim()) body.rental_terms = form.rental_terms.trim();
+      else body.rental_terms = null;
 
       const res = await fetch("/api/assets", {
         method: "POST",
@@ -138,8 +170,13 @@ export function AdminConsole() {
         description: "",
         custodian_wallet: "",
         status: "available",
+        rental_type: "company_owned",
+        rental_start_at: "",
+        rental_end_at: "",
+        rental_fee: "",
+        rental_terms: "",
       });
-      setNotice("자산이 등록되었습니다.");
+      setNotice("렌탈 자산이 등록되었습니다.");
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "등록 실패");
@@ -150,7 +187,21 @@ export function AdminConsole() {
 
   const handleUpdate = async (
     asset: AssetRow,
-    patch: Partial<Pick<AssetRow, "name" | "category" | "description" | "custodian_wallet" | "status">>,
+    patch: Partial<
+      Pick<
+        AssetRow,
+        | "name"
+        | "category"
+        | "description"
+        | "custodian_wallet"
+        | "status"
+        | "rental_type"
+        | "rental_start_at"
+        | "rental_end_at"
+        | "rental_fee"
+        | "rental_terms"
+      >
+    >,
   ) => {
     if (!isAdmin || !publicKey) return;
     if (patch.custodian_wallet && !WALLET_RE.test(patch.custodian_wallet)) {
@@ -213,7 +264,7 @@ export function AdminConsole() {
       <div className="flex gap-2">
         {(
           [
-            ["assets", "자산 관리"],
+            ["assets", "렌탈 자산 관리"],
             ["handovers", "인수인계 내역"],
           ] as [Tab, string][]
         ).map(([key, label]) => (
@@ -233,12 +284,12 @@ export function AdminConsole() {
 
       {tab === "assets" && (
         <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-          <h2 className="text-lg font-semibold">자산 등록</h2>
+          <h2 className="text-lg font-semibold">렌탈 자산 등록</h2>
           <div className="mt-4 grid grid-cols-2 gap-3">
             <input
               value={form.asset_code}
               onChange={(e) => setForm({ ...form, asset_code: e.target.value })}
-              placeholder="자산코드 (예: NB-0001)"
+              placeholder="렌탈 자산 코드 (예: NB-0001)"
               className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
             />
             <input
@@ -274,20 +325,56 @@ export function AdminConsole() {
               <option value="in_use">in_use</option>
               <option value="retired">retired</option>
             </select>
+            <select
+              value={form.rental_type}
+              onChange={(e) => setForm({ ...form, rental_type: e.target.value })}
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+            >
+              <option value="company_owned">회사 보유</option>
+              <option value="leased">임대 (외부 렌탈사)</option>
+            </select>
+            <input
+              type="date"
+              value={form.rental_start_at}
+              onChange={(e) => setForm({ ...form, rental_start_at: e.target.value })}
+              placeholder="렌탈 시작일"
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              value={form.rental_end_at}
+              onChange={(e) => setForm({ ...form, rental_end_at: e.target.value })}
+              placeholder="예정 반납일"
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+            />
+            <input
+              type="number"
+              min={0}
+              value={form.rental_fee}
+              onChange={(e) => setForm({ ...form, rental_fee: e.target.value })}
+              placeholder="월 렌탈비 (원, 선택)"
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+            />
           </div>
+          <input
+            value={form.rental_terms}
+            onChange={(e) => setForm({ ...form, rental_terms: e.target.value })}
+            placeholder="렌탈 조건/비고 (예: 분실 시 본인 부담)"
+            className="mt-3 w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+          />
           <button
             onClick={() => void handleCreate()}
             disabled={busy || !form.asset_code.trim() || !form.name.trim()}
             className="mt-4 rounded bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-500 disabled:opacity-50"
           >
-            {busy ? "등록 중..." : "자산 등록"}
+            {busy ? "등록 중..." : "렌탈 자산 등록"}
           </button>
         </section>
       )}
 
       {tab === "assets" && (
         <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
-          <h2 className="text-lg font-semibold">전체 자산 ({assets.length})</h2>
+          <h2 className="text-lg font-semibold">전체 렌탈 자산 ({assets.length})</h2>
           <ul className="mt-4 space-y-3">
             {assets.map((a) => (
               <li key={a.id} className="rounded border border-neutral-800 bg-neutral-800/40 p-3">
@@ -307,11 +394,33 @@ export function AdminConsole() {
                   {a.category && (
                     <span className="text-xs text-neutral-500">/{a.category}</span>
                   )}
+                  <span
+                    className={`rounded px-2 py-0.5 text-xs ${
+                      a.rental_type === "leased"
+                        ? "bg-amber-500/15 text-amber-300"
+                        : "bg-neutral-700/40 text-neutral-300"
+                    }`}
+                  >
+                    {rentalTypeLabel[a.rental_type]}
+                  </span>
+                  {fmtPeriod(a) && (
+                    <span className="rounded bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+                      {fmtPeriod(a)}
+                    </span>
+                  )}
+                  {a.rental_fee != null && (
+                    <span className="text-xs text-neutral-400">{fmtFee(a.rental_fee)}</span>
+                  )}
                 </div>
                 {a.description && (
                   <p className="mt-1 text-xs text-neutral-500">{a.description}</p>
                 )}
-                <div className="mt-3 grid grid-cols-3 gap-2">
+                {a.rental_terms && (
+                  <p className="mt-1 text-[11px] text-neutral-500">
+                    렌탈 조건: {a.rental_terms}
+                  </p>
+                )}
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                   <input
                     defaultValue={a.name}
                     onBlur={(e) => {
@@ -344,6 +453,48 @@ export function AdminConsole() {
                     <option value="in_use">in_use</option>
                     <option value="retired">retired</option>
                   </select>
+                  <select
+                    defaultValue={a.rental_type}
+                    onChange={(e) => {
+                      const v = e.target.value as RentalType;
+                      if (v !== a.rental_type) void handleUpdate(a, { rental_type: v });
+                    }}
+                    className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                  >
+                    <option value="company_owned">회사 보유</option>
+                    <option value="leased">임대</option>
+                  </select>
+                  <input
+                    type="date"
+                    defaultValue={a.rental_end_at ?? ""}
+                    onBlur={(e) => {
+                      const v = e.target.value;
+                      if (v !== (a.rental_end_at ?? "")) {
+                        void handleUpdate(a, { rental_end_at: v || null });
+                      }
+                    }}
+                    title="예정 반납일 변경"
+                    className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                  />
+                  <input
+                    type="number"
+                    min={0}
+                    defaultValue={a.rental_fee ?? ""}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      if (v === "") {
+                        if (a.rental_fee != null) void handleUpdate(a, { rental_fee: null });
+                        return;
+                      }
+                      const fee = Number(v);
+                      if (!Number.isNaN(fee) && fee >= 0 && fee !== a.rental_fee) {
+                        void handleUpdate(a, { rental_fee: fee });
+                      }
+                    }}
+                    placeholder="월 렌탈비"
+                    title="월 렌탈비 변경"
+                    className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                  />
                 </div>
               </li>
             ))}

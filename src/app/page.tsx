@@ -13,7 +13,7 @@ export default function HomePage() {
               href="/handover"
               className="rounded-lg border border-neutral-700 px-4 py-1.5 text-sm text-neutral-200 transition-colors hover:border-neutral-500 hover:text-white"
             >
-              인수인계 콘솔
+              렌탈 자산 콘솔
             </Link>
             <Link
               href="/admin"

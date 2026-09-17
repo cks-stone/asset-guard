@@ -1,6 +1,7 @@
 // M2 — Supabase 스키마와 매칭되는 타입 (supabase/migrations/0001_assets_handovers.sql)
 
 export type AssetStatus = "available" | "in_use" | "retired";
+export type RentalType = "company_owned" | "leased";
 export type HandoverStatus = "pending" | "completed" | "cancelled";
 
 export interface AssetRow {
@@ -11,6 +12,11 @@ export interface AssetRow {
   description: string | null;
   custodian_wallet: string | null;
   status: AssetStatus;
+  rental_type: RentalType;
+  rental_start_at: string | null;
+  rental_end_at: string | null;
+  rental_fee: number | null;
+  rental_terms: string | null;
   created_at: string;
   updated_at: string;
 }
