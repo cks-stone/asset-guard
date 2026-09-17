@@ -4,6 +4,8 @@ const devSchema = z.object({
   NEXT_PUBLIC_SOLANA_NETWORK: z.enum(["devnet", "mainnet-beta"]),
   NEXT_PUBLIC_SOLANA_RPC_URL: z.string().url(),
   NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID: z.string().optional(),
+  NEXT_PUBLIC_SUPABASE_URL: z.string().url().optional(),
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
 });
 
 const serverSchema = devSchema.extend({});
@@ -23,6 +25,8 @@ export function getEnv(): SolanaEnv {
     NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
     NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID:
       process.env.NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID,
+    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
   });
   if (!parsed.success) {
     const details = JSON.stringify(parsed.error.flatten().fieldErrors, null, 2);
