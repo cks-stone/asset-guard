@@ -388,6 +388,7 @@ export function Dashboard() {
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
       setNotice(`렌탈 자산 등록 완료 (${form.management_no})`);
       setForm(emptyForm);
+      setFormOpen(false);
       await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "등록 실패");
@@ -522,160 +523,22 @@ export function Dashboard() {
 
       <BillingCalendar assets={assets} />
 
-      <section className="rounded-xl border border-neutral-800 bg-neutral-900">
-        <button
-          type="button"
-          onClick={() => setFormOpen((v) => !v)}
-          aria-expanded={formOpen}
-          className="flex w-full items-center justify-between gap-3 px-6 py-4 text-left"
-        >
-          <span>
-            <span className="text-lg font-semibold">렌탈 자산 등록</span>
-            <span className="mt-1 block text-xs text-neutral-500">
-              로그인한 사용자는 누구나 렌탈 자산을 등록할 수 있습니다.
-            </span>
-          </span>
-          <span
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-neutral-700 text-base text-neutral-300 transition-transform ${
-              formOpen ? "rotate-180" : ""
-            }`}
-          >
-            {formOpen ? "−" : "+"}
-          </span>
-        </button>
-        {formOpen && (
-          <div className="px-6 pb-6">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <input
-            value={form.management_no}
-            onChange={(e) => setForm({ ...form, management_no: e.target.value })}
-            placeholder="관리번호 (예: AST-2026-0012) *"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.serial_no}
-            onChange={(e) => setForm({ ...form, serial_no: e.target.value })}
-            placeholder="시리얼번호"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.order_no}
-            onChange={(e) => setForm({ ...form, order_no: e.target.value })}
-            placeholder="주문번호"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.model_name}
-            onChange={(e) => setForm({ ...form, model_name: e.target.value })}
-            placeholder="모델명 (예: Dell Latitude 5530) *"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <select
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          >
-            <option value="">카테고리 선택</option>
-            {RENTAL_ASSET_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-          <input
-            value={form.manufacturer}
-            onChange={(e) => setForm({ ...form, manufacturer: e.target.value })}
-            placeholder="제조사 (예: Dell)"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.user_name}
-            onChange={(e) => setForm({ ...form, user_name: e.target.value })}
-            placeholder="현재 사용자 (예: 홍길동)"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.division}
-            onChange={(e) => setForm({ ...form, division: e.target.value })}
-            placeholder="상위 소속 (예: A부문)"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.department}
-            onChange={(e) => setForm({ ...form, department: e.target.value })}
-            placeholder="소속 팀 (예: AAAA팀)"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.rental_company}
-            onChange={(e) => setForm({ ...form, rental_company: e.target.value })}
-            placeholder="렌탈사"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <select
-            value={form.billing_cycle}
-            onChange={(e) => setForm({ ...form, billing_cycle: e.target.value })}
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          >
-            {(Object.keys(billingCycleLabels) as BillingCycle[]).map((c) => (
-              <option key={c} value={c}>
-                {billingCycleLabels[c]}
-              </option>
-            ))}
-          </select>
-          <input
-            type="number"
-            min={0}
-            value={form.rental_fee}
-            onChange={(e) => setForm({ ...form, rental_fee: e.target.value })}
-            placeholder="렌탈료 (원)"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            value={form.billing_month}
-            onChange={(e) => setForm({ ...form, billing_month: e.target.value })}
-            placeholder="청구월 (예: 매월 / 3,9월)"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            type="date"
-            value={form.rental_start_date}
-            onChange={(e) => setForm({ ...form, rental_start_date: e.target.value })}
-            placeholder="렌탈 시작일"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <input
-            type="date"
-            value={form.rental_end_date}
-            onChange={(e) => setForm({ ...form, rental_end_date: e.target.value })}
-            placeholder="렌탈 종료일"
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          />
-          <select
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
-            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-          >
-            <option value="정상사용">정상사용</option>
-            <option value="유휴">유휴</option>
-            <option value="계약종료">계약종료</option>
-          </select>
-            </div>
-            <button
-              onClick={() => void handleSubmit()}
-              disabled={busy || !form.management_no.trim() || !form.model_name.trim()}
-              className="mt-4 rounded bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-500 disabled:opacity-50"
-            >
-              {busy ? "등록 중..." : "렌탈 자산 등록"}
-            </button>
-          </div>
-        )}
-      </section>
-
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">렌탈 자산 목록 ({visibleAssets.length})</h2>
-          <div className="flex gap-2">
+          <h2 className="text-lg font-semibold">
+            내가 관리하고 있는 자산 목록 ({visibleAssets.length})
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setForm(emptyForm);
+                setFormOpen(true);
+              }}
+              className="rounded bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+            >
+              + 자산등록
+            </button>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -708,7 +571,7 @@ export function Dashboard() {
         </div>
         {loading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}
         {!loading && visibleAssets.length === 0 && (
-          <p className="mt-3 text-sm text-neutral-500">등록된 렌탈 자산이 없습니다.</p>
+          <p className="mt-3 text-sm text-neutral-500">관리 중인 자산이 없습니다.</p>
         )}
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[1220px] whitespace-nowrap border-collapse text-left text-sm">
@@ -1004,6 +867,178 @@ export function Dashboard() {
           </table>
         </div>
       </section>
+
+      {formOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            if (!busy) setFormOpen(false);
+          }}
+        >
+          <div
+            className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-neutral-700 bg-neutral-900 p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold">자산 등록</h2>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!busy) setFormOpen(false);
+                }}
+                disabled={busy}
+                aria-label="닫기"
+                className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-700 text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-neutral-500">
+              로그인한 사용자는 누구나 렌탈 자산을 등록할 수 있습니다.
+            </p>
+
+            <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <input
+                value={form.management_no}
+                onChange={(e) => setForm({ ...form, management_no: e.target.value })}
+                placeholder="관리번호 (예: AST-2026-0012) *"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.serial_no}
+                onChange={(e) => setForm({ ...form, serial_no: e.target.value })}
+                placeholder="시리얼번호"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.order_no}
+                onChange={(e) => setForm({ ...form, order_no: e.target.value })}
+                placeholder="주문번호"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.model_name}
+                onChange={(e) => setForm({ ...form, model_name: e.target.value })}
+                placeholder="모델명 (예: Dell Latitude 5530) *"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <select
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              >
+                <option value="">카테고리 선택</option>
+                {RENTAL_ASSET_CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={form.manufacturer}
+                onChange={(e) => setForm({ ...form, manufacturer: e.target.value })}
+                placeholder="제조사 (예: Dell)"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.user_name}
+                onChange={(e) => setForm({ ...form, user_name: e.target.value })}
+                placeholder="현재 사용자 (예: 홍길동)"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.division}
+                onChange={(e) => setForm({ ...form, division: e.target.value })}
+                placeholder="상위 소속 (예: A부문)"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.department}
+                onChange={(e) => setForm({ ...form, department: e.target.value })}
+                placeholder="소속 팀 (예: AAAA팀)"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.rental_company}
+                onChange={(e) => setForm({ ...form, rental_company: e.target.value })}
+                placeholder="렌탈사"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <select
+                value={form.billing_cycle}
+                onChange={(e) => setForm({ ...form, billing_cycle: e.target.value })}
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              >
+                {(Object.keys(billingCycleLabels) as BillingCycle[]).map((c) => (
+                  <option key={c} value={c}>
+                    {billingCycleLabels[c]}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                min={0}
+                value={form.rental_fee}
+                onChange={(e) => setForm({ ...form, rental_fee: e.target.value })}
+                placeholder="렌탈료 (원)"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                value={form.billing_month}
+                onChange={(e) => setForm({ ...form, billing_month: e.target.value })}
+                placeholder="청구월 (예: 매월 / 3,9월)"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                type="date"
+                value={form.rental_start_date}
+                onChange={(e) => setForm({ ...form, rental_start_date: e.target.value })}
+                placeholder="렌탈 시작일"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <input
+                type="date"
+                value={form.rental_end_date}
+                onChange={(e) => setForm({ ...form, rental_end_date: e.target.value })}
+                placeholder="렌탈 종료일"
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              />
+              <select
+                value={form.status}
+                onChange={(e) => setForm({ ...form, status: e.target.value })}
+                className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+              >
+                <option value="정상사용">정상사용</option>
+                <option value="유휴">유휴</option>
+                <option value="계약종료">계약종료</option>
+              </select>
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!busy) setFormOpen(false);
+                }}
+                disabled={busy}
+                className="rounded border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+              >
+                취소
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleSubmit()}
+                disabled={busy || !form.management_no.trim() || !form.model_name.trim()}
+                className="rounded bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-50"
+              >
+                {busy ? "등록 중..." : "자산 등록"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isAdmin && <AdminConsole />}
     </div>
