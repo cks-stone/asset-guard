@@ -558,6 +558,18 @@ export function Dashboard() {
             </select>
           </div>
         </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setForm(emptyForm);
+              setFormOpen(true);
+            }}
+            className="rounded bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+          >
+            + 자산등록
+          </button>
+        </div>
         {loading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}
         {!loading && visibleAssets.length === 0 && (
           <p className="mt-3 text-sm text-neutral-500">관리 중인 자산이 없습니다.</p>
@@ -744,18 +756,6 @@ export function Dashboard() {
               ))}
             </tbody>
           </table>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              setForm(emptyForm);
-              setFormOpen(true);
-            }}
-            className="rounded bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-          >
-            + 자산등록
-          </button>
         </div>
       </section>
 
