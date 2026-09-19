@@ -17,7 +17,10 @@ impl Default for HandoverStatus {
     }
 }
 
-/// 인수인계 이력 — Supabase(ad-hoc DB)와 달리 관리자도 위조/삭제 불가
+/// 인수인계 이력 — Supabase(ad-hoc DB)와 달리 관리자도 위조/삭제 불가.
+/// 2026-09 단일 레코드 방식: PDA는 자산(asset_id) 단독 키로 1개만 두고,
+/// create_handover가 init_if_needed 로 재사용한다 (반복·왕복 이관 가능).
+/// 전체 이력(시간순)은 DB transfer_history가 보관하고, 온체인은 최신 사실을 증명한다.
 #[account]
 #[derive(Default)]
 pub struct Handover {
@@ -100,6 +103,7 @@ pub mod asset_guard {
         handover.from = ctx.accounts.from.key();
         handover.to = ctx.accounts.to.key();
         handover.status = HandoverStatus::Pending;
+        handover.completed_ts = 0;
         handover.created_ts = Clock::get()?.unix_timestamp;
         handover.bump = ctx.bumps.handover;
 
@@ -146,21 +150,27 @@ pub mod asset_guard {
 #[derive(Accounts)]
 #[instruction(asset_id: String, asset_code: String)]
 pub struct CreateHandover<'info> {
-    /// PDA: handover_{asset_id}_{from}_{to}
+    /// PDA: handover_sha256(asset_id) — 자산당 1개, init_if_needed 로 재사용
     #[account(
-        init,
-        payer = from,
+        init_if_needed,
+        payer = fee_payer,
         space = Handover::SPACE,
-        seeds = [b"handover".as_ref(), &asset_seed(&asset_id), from.key().as_ref(), to.key().as_ref()],
+        seeds = [b"handover".as_ref(), &asset_seed(&asset_id)],
         bump
     )]
     pub handover: Account<'info, Handover>,
-    /// 기존 담당자 — 렌트비(rent) 지불 + create 서명
+    /// CHECK: 주소만 기록(온체인 서명은 없음).
+    /// 2026-09 흐름 재설계: 인수인계는 관리자(시스템/서비스 지갑)가 승인 시점에
+    /// 단독으로 실행한다. A(기존 담당자)·B(신규 담당자)의 동의는 DB 승인 기록으로
+    /// 보존하며, 이 계정 주소는 그 때 DB에 기록된 실제 담당자 주소가 들어온다.
     #[account(mut)]
-    pub from: Signer<'info>,
-    /// CHECK:: 신규 담당자 — create 단계에서는 서명 없음. accept_handover에서
-    /// `address = handover.to` 제약으로 정합성이 검증됨.
+    pub from: AccountInfo<'info>,
+    /// CHECK:: 신규 담당자 — 수신 승인 기록 대상.
     pub to: AccountInfo<'info>,
+    /// 시스템 관리자(운영 서비스 지갑) — PDA 렌트비 + 트랜잭션 수수료 지불.
+    /// 서버가 보관한 키만 이 계정으로 서명한다.
+    #[account(mut)]
+    pub fee_payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -168,7 +178,7 @@ pub struct CreateHandover<'info> {
 pub struct AcceptHandover<'info> {
     #[account(
         mut,
-        seeds = [b"handover".as_ref(), &asset_seed(&handover.asset_id), from.key().as_ref(), to.key().as_ref()],
+        seeds = [b"handover".as_ref(), &asset_seed(&handover.asset_id)],
         bump = handover.bump
     )]
     pub handover: Account<'info, Handover>,
@@ -182,13 +192,13 @@ pub struct AcceptHandover<'info> {
 pub struct CancelHandover<'info> {
     #[account(
         mut,
-        seeds = [b"handover".as_ref(), &asset_seed(&handover.asset_id), from.key().as_ref(), to.key().as_ref()],
+        seeds = [b"handover".as_ref(), &asset_seed(&handover.asset_id)],
         bump = handover.bump
     )]
     pub handover: Account<'info, Handover>,
     #[account(address = handover.from)]
     pub from: Signer<'info>,
-    /// CHECK:: 신규 담당자 — PDA 시드 계산에만 사용. 서명 불필요, address=handover.to 검증 없음.
+    /// CHECK:: 신규 담당자 — 서명 불필요, address=handover.to 검증 없음.
     pub to: AccountInfo<'info>,
 }
 

@@ -8,6 +8,7 @@ import {
 } from "@solana/kit";
 import { getEnv, isSolanaMainnet } from "@/lib/config/env";
 import { WalletProvider } from "@/lib/wallet/wallet-context";
+import { WalletLabelProvider } from "@/lib/wallet/wallet-label-context";
 
 /**
  * 글로벌 프로바이더 조합.
@@ -48,7 +49,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
         },
       }}
     >
-      <WalletProvider>{children}</WalletProvider>
+      <WalletProvider>
+        <WalletLabelProvider>{children}</WalletLabelProvider>
+      </WalletProvider>
     </PrivyProvider>
   );
 }

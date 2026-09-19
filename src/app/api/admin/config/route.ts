@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminWallets } from "@/lib/admin";
+import { getFeePayerAddress } from "@/lib/solana/fee-payer";
 
 export const runtime = "nodejs";
 
@@ -8,5 +9,8 @@ export const runtime = "nodejs";
  * 실제 데이터 변경은 서버가 x-admin-wallet 헤더로 재검증.
  */
 export async function GET() {
-  return NextResponse.json({ adminWallets: getAdminWallets() });
+  return NextResponse.json({
+    adminWallets: getAdminWallets(),
+    feePayerAddress: getFeePayerAddress(),
+  });
 }

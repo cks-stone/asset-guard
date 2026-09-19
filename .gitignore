@@ -6,8 +6,13 @@ build
 
 # Environment
 .env
-.env.local
-.env*.local
+.env.*
+!.env.example
+
+# Supabase (로컬 + 서버 키/시크릿 제외 — 마이그레이션 스키마는 유지)
+supabase/.env
+supabase/.env.local
+supabase/config.toml
 
 # Anchor / Solana
 target

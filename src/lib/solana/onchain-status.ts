@@ -13,8 +13,6 @@ const STATUS_BY_U8: OnChainStatus[] = ["pending", "completed", "cancelled"];
  */
 export async function fetchHandoverStatusOnChain(args: {
   assetId: string;
-  from: string;
-  to: string;
 }): Promise<{ exists: boolean; status: OnChainStatus }> {
   const env = getEnv();
   if (!env.NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID) {
@@ -23,8 +21,6 @@ export async function fetchHandoverStatusOnChain(args: {
   const { pda } = await findHandoverPda(
     env.NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID,
     args.assetId,
-    args.from,
-    args.to,
   );
   const connection = new Connection(env.NEXT_PUBLIC_SOLANA_RPC_URL, "confirmed");
   const info = await connection.getAccountInfo(pda);

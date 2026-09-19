@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+@keyframes asset-blink {
+  0%,
+  100% {
+    background-color: transparent;
+  }
+  50% {
+    background-color: rgba(251, 191, 36, 0.16);
+  }
+}
+
+.row-blink {
+  animation: asset-blink 0.5s ease-in-out infinite;
+}

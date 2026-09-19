@@ -30,3 +30,20 @@ export function getAdminWalletFromRequest(req: NextRequest): string | null {
   const wallet = req.headers.get("x-admin-wallet");
   return isAdminWallet(wallet) ? wallet!.trim() : null;
 }
+
+const SOLANA_ADDRESS_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+
+/** Solana 주소(base58, 32~44자) 형식 검증 */
+export function isValidSolanaAddress(address: string | null | undefined): boolean {
+  return !!address && SOLANA_ADDRESS_RE.test(address.trim());
+}
+
+/**
+ * 로그인 사용자 식별 — 연결된 Solana 지갑 주소(x-wallet 헤더)를 검증해 반환.
+ * 유효한 주소 형식이면 화이트리스트 여부와 무관하게 로그인 사용자로 인정한다.
+ * (실 서비스에서는 nonce + personal_sign 기반 서명 인증으로 교체 예정)
+ */
+export function getWalletFromRequest(req: NextRequest): string | null {
+  const wallet = req.headers.get("x-wallet")?.trim();
+  return wallet && isValidSolanaAddress(wallet) ? wallet : null;
+}

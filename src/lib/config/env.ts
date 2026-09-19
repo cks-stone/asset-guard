@@ -8,11 +8,15 @@ const devSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z.string().min(1).optional(),
   NEXT_PUBLIC_PRIVY_APP_ID: z.string().optional(),
   NEXT_PUBLIC_PRIVY_CLIENT_ID: z.string().optional(),
+  // 인수인계 수수료·PDA 렌트를 부담하는 시스템(관리자) 결제 지갑 (공개주소, 브라우저 사용)
+  NEXT_PUBLIC_FEE_PAYER_ADDRESS: z.string().min(1).optional(),
 });
 
 const serverSchema = devSchema.extend({
   // 관리자 지갑 화이트리스트 (콤마 구분 base58) — 서버 전용
   ADMIN_WALLETS: z.string().optional(),
+  // 서버 전용 결제 지갑 개인키 (base58, 절대 브라우저 노출 금지)
+  FEE_PAYER_SECRET: z.string().min(1).optional(),
 });
 
 export type SolanaEnv = z.infer<typeof serverSchema>;
@@ -34,7 +38,9 @@ export function getEnv(): SolanaEnv {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     NEXT_PUBLIC_PRIVY_APP_ID: process.env.NEXT_PUBLIC_PRIVY_APP_ID,
     NEXT_PUBLIC_PRIVY_CLIENT_ID: process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID,
+    NEXT_PUBLIC_FEE_PAYER_ADDRESS: process.env.NEXT_PUBLIC_FEE_PAYER_ADDRESS,
     ADMIN_WALLETS: process.env.ADMIN_WALLETS,
+    FEE_PAYER_SECRET: process.env.FEE_PAYER_SECRET,
   });
   if (!parsed.success) {
     const details = JSON.stringify(parsed.error.flatten().fieldErrors, null, 2);
