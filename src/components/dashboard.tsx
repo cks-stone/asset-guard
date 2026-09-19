@@ -529,16 +529,6 @@ export function Dashboard() {
             내가 관리하고 있는 자산 목록 ({visibleAssets.length})
           </h2>
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                setForm(emptyForm);
-                setFormOpen(true);
-              }}
-              className="rounded bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
-            >
-              + 자산등록
-            </button>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -725,7 +715,7 @@ export function Dashboard() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-1">
+                      <div className="flex flex-nowrap items-center gap-1 whitespace-nowrap">
                         {a.pending_rejected_at && (
                           <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs text-red-300">
                             이전 요청 거절됨
@@ -755,6 +745,18 @@ export function Dashboard() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              setForm(emptyForm);
+              setFormOpen(true);
+            }}
+            className="rounded bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500"
+          >
+            + 자산등록
+          </button>
         </div>
       </section>
 
