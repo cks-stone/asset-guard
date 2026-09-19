@@ -1,6 +1,6 @@
 // M9 — 렌탈 자산 장부 스키마와 매칭되는 타입 (supabase/migrations/0005_rental_assets.sql)
 
-export type RentalAssetStatus = "정상사용" | "인수인계대기" | "계약종료";
+export type RentalAssetStatus = "정상사용" | "유휴" | "계약종료";
 export type BillingCycle = "월납" | "연납" | "반기납" | "일시납";
 
 export interface RentalAssetRow {

@@ -6,7 +6,7 @@ import type { RentalAssetRow, RentalAssetStatus } from "@/lib/supabase/types";
 
 export const runtime = "nodejs";
 
-const STATUSES = ["정상사용", "인수인계대기", "계약종료"] as const;
+const STATUSES = ["정상사용", "유휴", "계약종료"] as const;
 const BILLING_CYCLES = ["월납", "연납", "반기납", "일시납"] as const;
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 형식이어야 합니다");
@@ -57,12 +57,15 @@ export async function GET(req: NextRequest) {
     const all = searchParams.get("all") === "1";
     // incoming=1: 내게 온 '수신 대기'(pending_to_wallet = 내 지갑) 조회
     const incoming = searchParams.get("incoming") === "1";
+    // idle=1: 전사 유휴 자산 — 로그인한 모든 사용자에게 공개
+    const idle = searchParams.get("idle") === "1";
     const wallet = getWalletFromRequest(req);
     const admin = getAdminWalletFromRequest(req);
 
     if (all) {
       if (!admin) return errorResponse("관리자 지갑이 아닙니다", 401);
     } else {
+      // 유휴 공개(idle)도 로그인한 사용자만 조회 가능 (관리자 제한은 없음)
       if (!wallet) return errorResponse("로그인한 사용자만 조회할 수 있습니다", 401);
     }
 
@@ -73,6 +76,9 @@ export async function GET(req: NextRequest) {
 
     if (all) {
       // 관리자 전체 조회 — 계약종료 포함 (관리자만 볼 수 있음)
+    } else if (idle) {
+      // 전사 유휴 자산 — 전체 공개 (상태가 유휴인 모든 행)
+      query = query.eq("status", "유휴");
     } else if (incoming) {
       query = query.eq("pending_to_wallet", wallet);
     } else {
@@ -81,7 +87,8 @@ export async function GET(req: NextRequest) {
 
     // 일반 사용자(관리자 제외)에게는 계약종료 자산을 숨긴다.
     // 관리자가 '정상 재개'하면 다시 목록에 노출된다.
-    if (!all) {
+    // 유휴 공개(idle)는 유휴 행만 대상이므로 계약종료 숨김 규칙이 적용되지 않는다.
+    if (!all && !idle) {
       query = query.neq("status", "계약종료");
     }
 

@@ -16,7 +16,7 @@ async function readJson(res: Response): Promise<{ error?: string; [k: string]: u
 
 const statusBadge: Record<string, string> = {
   정상사용: "bg-emerald-500/15 text-emerald-300",
-  인수인계대기: "bg-amber-500/15 text-amber-300",
+  유휴: "bg-sky-500/15 text-sky-300",
   계약종료: "bg-neutral-500/15 text-neutral-400",
 };
 
@@ -400,7 +400,6 @@ export function AdminConsole() {
                 <th className="px-3 py-2 font-medium">상태</th>
                 <th className="px-3 py-2 font-medium">이전 요청</th>
                 <th className="px-3 py-2 font-medium">이관 기록</th>
-                <th className="px-3 py-2 font-medium">계약종료</th>
               </tr>
             </thead>
             <tbody>
@@ -530,7 +529,7 @@ export function AdminConsole() {
                       className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     >
                       <option value="정상사용">정상사용</option>
-                      <option value="인수인계대기">인수인계대기</option>
+                      <option value="유휴">유휴</option>
                       <option value="계약종료">계약종료</option>
                     </select>
                     <span
@@ -587,34 +586,6 @@ export function AdminConsole() {
                       <span className="ml-1 text-[10px] text-neutral-500">
                         {new Date(a.transferred_at).toLocaleString()}
                       </span>
-                    )}
-                  </td>
-                  <td className="px-3 py-2">
-                    {a.status === "계약종료" ? (
-                      <button
-                        onClick={() => void handleUpdate(a, { status: "정상사용" })}
-                        disabled={busy === a.management_no}
-                        title="계약이 재개되면 정상사용 상태로 되돌립니다"
-                        className="rounded bg-emerald-600/80 px-2 py-1 text-xs text-white hover:bg-emerald-500 disabled:opacity-50"
-                      >
-                        정상 재개
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => {
-                          if (
-                            window.confirm(
-                              `'${a.management_no}' 를 계약종료로 전환할까요? 이력은 유지됩니다.`,
-                            )
-                          ) {
-                            void handleUpdate(a, { status: "계약종료" });
-                          }
-                        }}
-                        disabled={busy === a.management_no}
-                        className="rounded bg-red-600/80 px-2 py-1 text-xs text-white hover:bg-red-500 disabled:opacity-50"
-                      >
-                        계약종료
-                      </button>
                     )}
                   </td>
                 </tr>

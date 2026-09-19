@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 export type RentalAssetRouteContext = { params: Promise<{ management_no: string }> };
 
-const STATUSES = ["정상사용", "인수인계대기", "계약종료"] as const;
+const STATUSES = ["정상사용", "유휴", "계약종료"] as const;
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD 형식이어야 합니다");
 

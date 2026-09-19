@@ -23,7 +23,7 @@ async function readJson(res: Response): Promise<{ error?: string; [k: string]: u
 
 const statusBadge: Record<string, string> = {
   정상사용: "bg-emerald-500/15 text-emerald-300",
-  인수인계대기: "bg-amber-500/15 text-amber-300",
+  유휴: "bg-sky-500/15 text-sky-300",
   계약종료: "bg-neutral-500/15 text-neutral-400",
 };
 
@@ -113,6 +113,9 @@ export function Dashboard() {
   const [adminWallets, setAdminWallets] = useState<string[]>([]);
   const [incomingAssets, setIncomingAssets] = useState<RentalAssetRow[]>([]);
   const [incomingLoading, setIncomingLoading] = useState(false);
+  // 전사 유휴 자산 (모든 로그인 사용자에게 공개)
+  const [idleAssets, setIdleAssets] = useState<RentalAssetRow[]>([]);
+  const [idleLoading, setIdleLoading] = useState(false);
 
   // 렌탈 목록에 표시할 행: 내 담당(managed_by) 자산 + 내게 이전 요청이 온 인입 자산.
   // 인입 자산은 목록에서 바로 인수 승인/거절을 처리할 수 있도록 함께 노출.
@@ -252,11 +255,35 @@ export function Dashboard() {
     if (publicKey) void refreshIncoming();
   }, [publicKey, refreshIncoming]);
 
+  // 전사 유휴 자산 조회 — 로그인한 모든 사용자가 전체 유휴 목록을 볼 수 있다.
+  // 내 담당 여부와 무관하게 공개되는 전사 목록이므로 별도 스냅샷(diff) 없이 갱신한다.
+  const refreshIdle = useCallback(async (quiet = false) => {
+    if (!publicKey) return;
+    if (!quiet) setIdleLoading(true);
+    try {
+      const res = await fetch(
+        new URL("/api/rental-assets?idle=1", window.location.origin),
+        { headers: { "x-wallet": publicKey } },
+      );
+      const json = (await readJson(res)) as { error?: string; data?: RentalAssetRow[] };
+      if (res.ok) setIdleAssets(json.data ?? []);
+    } catch (err) {
+      console.error("[dashboard] 유휴 자산 목록 조회 실패:", err);
+    } finally {
+      setIdleLoading(false);
+    }
+  }, [publicKey]);
+
+  useEffect(() => {
+    if (publicKey) void refreshIdle();
+  }, [publicKey, refreshIdle]);
+
   // 탭/기기 복귀(포커스·가시성) 시 조용히 최신화 — 새로고침 없이 바로 반영.
   useEffect(() => {
     const onVisible = () => {
       void refresh(true);
       if (publicKey) void refreshIncoming(true);
+      if (publicKey) void refreshIdle(true);
     };
     window.addEventListener("focus", onVisible);
     const onVisChange = () => {
@@ -267,17 +294,18 @@ export function Dashboard() {
       window.removeEventListener("focus", onVisible);
       document.removeEventListener("visibilitychange", onVisChange);
     };
-  }, [publicKey, refresh, refreshIncoming]);
+  }, [publicKey, refresh, refreshIncoming, refreshIdle]);
 
-  // 주기 폴링(10초) — 내 담당 자산 + 수신 대기 목록을 조용히 갱신.
+  // 주기 폴링(10초) — 내 담당 자산 + 수신 대기 + 유휴 전사 목록을 조용히 갱신.
   useEffect(() => {
     if (!connected || !publicKey) return;
     const id = window.setInterval(() => {
       void refresh(true);
       void refreshIncoming(true);
+      void refreshIdle(true);
     }, 10_000);
     return () => window.clearInterval(id);
-  }, [connected, publicKey, refresh, refreshIncoming]);
+  }, [connected, publicKey, refresh, refreshIncoming, refreshIdle]);
 
   const stats = useMemo(() => {
     const total = assets.length;
@@ -286,7 +314,7 @@ export function Dashboard() {
     // 내가 이전 요청을 보냈지만 수신자(B)가 아직 승인/거절하지 않은 상태
     const pendingOutgoing = assets.filter(
       (a) =>
-        a.status !== "인수인계대기" &&
+        a.status !== "유휴" &&
         a.pending_to_wallet &&
         !a.pending_receiver_approved_at &&
         !a.pending_receiver_rejected_at,
@@ -447,11 +475,10 @@ export function Dashboard() {
   const statCards = [
     { label: "총 렌탈 자산", value: stats.total, accent: "text-neutral-200" },
     { label: "정상사용", value: stats.countByStatus("정상사용"), accent: "text-emerald-300" },
+    { label: "유휴", value: idleAssets.length, accent: "text-sky-300" },
     {
-      label: "인수인계대기",
+      label: "이전 진행",
       value:
-        stats.countByStatus("인수인계대기") +
-        // '수신 대기 — 인수 승인'(pending_to_wallet = 나) 항목도 포함
         incomingAssets.length +
         // 내가 요청했지만 수신자가 아직 승인하지 않은 장비 포함
         stats.pendingOutgoing,
@@ -610,7 +637,7 @@ export function Dashboard() {
             className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
           >
             <option value="정상사용">정상사용</option>
-            <option value="인수인계대기">인수인계대기</option>
+            <option value="유휴">유휴</option>
             <option value="계약종료">계약종료</option>
           </select>
             </div>
@@ -642,7 +669,7 @@ export function Dashboard() {
             >
               <option value="">전체 상태</option>
               <option value="정상사용">정상사용</option>
-              <option value="인수인계대기">인수인계대기</option>
+              <option value="유휴">유휴</option>
               <option value="계약종료">계약종료</option>
             </select>
           </div>
@@ -757,10 +784,6 @@ export function Dashboard() {
                           </button>
                         </div>
                       )
-                    ) : a.status === "인수인계대기" ? (
-                      <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
-                        인수 대기 (관리자 확인 필요)
-                      </span>
                     ) : a.status === "계약종료" ? (
                       <span className="text-xs text-neutral-600">—</span>
                     ) : a.pending_to_wallet ? (
@@ -822,6 +845,79 @@ export function Dashboard() {
                         </button>
                       </div>
                     )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold">유휴 자산 (전사 공개)</h2>
+          <span className="text-xs text-neutral-500">
+            로그인한 모든 사용자가 회사 전체 유휴 자산을 볼 수 있습니다.
+          </span>
+        </div>
+        {idleLoading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}
+        {!idleLoading && idleAssets.length === 0 && (
+          <p className="mt-3 text-sm text-neutral-500">현재 유휴 상태인 자산이 없습니다.</p>
+        )}
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[760px] whitespace-nowrap border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-neutral-700 text-xs text-neutral-500">
+                <th className="px-3 py-2 font-medium">관리번호</th>
+                <th className="px-3 py-2 font-medium">모델명</th>
+                <th className="px-3 py-2 font-medium">사용자</th>
+                <th className="px-3 py-2 font-medium">부문/팀</th>
+                <th className="px-3 py-2 font-medium">렌탈사</th>
+                <th className="px-3 py-2 font-medium">렌탈료</th>
+                <th className="px-3 py-2 font-medium">렌탈 종료일</th>
+                <th className="px-3 py-2 font-medium">상태</th>
+              </tr>
+            </thead>
+            <tbody>
+              {idleAssets.map((a) => (
+                <tr key={a.management_no} className="border-b border-neutral-800/70 align-middle">
+                  <td className="px-3 py-2">
+                    <div className="font-mono text-xs">{a.management_no}</div>
+                    <Link
+                      href={`/assets/${encodeURIComponent(a.management_no)}/lineage`}
+                      className="text-[10px] text-blue-400 underline hover:text-blue-300"
+                    >
+                      이관 그래프 ↗
+                    </Link>
+                  </td>
+                  <td className="px-3 py-2 text-xs">
+                    {a.model_name}
+                    {a.serial_no && (
+                      <span className="ml-2 text-[10px] font-mono text-neutral-500">
+                        SN: {a.serial_no}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">{a.user_name ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {a.division && <span>{a.division}</span>}
+                    {a.division && a.department && " / "}
+                    {a.department && <span>{a.department}</span>}
+                    {!a.division && !a.department && "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs">{a.rental_company ?? "—"}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {a.rental_fee != null ? `${a.rental_fee.toLocaleString()}원` : "—"}
+                  </td>
+                  <td className="px-3 py-2 text-xs">{a.rental_end_date ?? "—"}</td>
+                  <td className="px-3 py-2">
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs ${
+                        statusBadge[a.status] ?? "bg-neutral-700/40 text-neutral-300"
+                      }`}
+                    >
+                      {a.status}
+                    </span>
                   </td>
                 </tr>
               ))}
