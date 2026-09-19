@@ -493,7 +493,6 @@ export function Dashboard() {
         stats.pendingOutgoing,
       accent: "text-amber-300",
     },
-    { label: "계약종료", value: stats.countByStatus("계약종료"), accent: "text-neutral-400" },
     {
       label: `${stats.now.getMonth() + 1}월 렌탈비 합계`,
       value: stats.monthlyFee ? `₩${stats.monthlyFee.toLocaleString()}` : "₩0",
