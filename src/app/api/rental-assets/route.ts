@@ -17,6 +17,7 @@ const insertRentalAssetSchema = z
     serial_no: z.string().trim().max(100).nullable().optional(),
     order_no: z.string().trim().max(64).nullable().optional(),
     model_name: z.string().trim().min(1).max(200),
+    category: z.string().trim().max(64).nullable().optional(),
     manufacturer: z.string().trim().max(64).nullable().optional(),
     user_name: z.string().trim().max(64).nullable().optional(),
     division: z.string().trim().max(64).nullable().optional(),
@@ -52,6 +53,7 @@ export async function GET(req: NextRequest) {
     const supabase = getSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const statusParam = searchParams.get("status") as RentalAssetStatus | null;
+    const categoryParam = searchParams.get("category");
     const q = searchParams.get("q");
     // all=1 (관리자 전용): 전체 조회. 기본: 본인 담당(managed_by) 행만 조회.
     const all = searchParams.get("all") === "1";
@@ -94,6 +96,9 @@ export async function GET(req: NextRequest) {
 
     if (statusParam) {
       query = query.eq("status", statusParam);
+    }
+    if (categoryParam && categoryParam.trim()) {
+      query = query.eq("category", categoryParam.trim());
     }
     if (q && q.trim()) {
       const pattern = `%${q.trim()}%`;

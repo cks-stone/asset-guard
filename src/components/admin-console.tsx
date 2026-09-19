@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@/lib/wallet/wallet-context";
 import { isSolanaMainnet } from "@/lib/config/env";
+import { RENTAL_ASSET_CATEGORIES } from "@/lib/supabase/types";
 import type { RentalAssetRow } from "@/lib/supabase/types";
 
 async function readJson(res: Response): Promise<{ error?: string; [k: string]: unknown }> {
@@ -28,6 +29,7 @@ export function AdminConsole() {
   const [adminWallets, setAdminWallets] = useState<string[]>([]);
   const [assets, setAssets] = useState<RentalAssetRow[]>([]);
   const [query, setQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -94,6 +96,7 @@ export function AdminConsole() {
     try {
       const url = new URL("/api/rental-assets", window.location.origin);
       url.searchParams.set("all", "1");
+      if (categoryFilter) url.searchParams.set("category", categoryFilter);
       if (query.trim()) url.searchParams.set("q", query.trim());
       const res = await fetch(url, {
         headers: { "x-admin-wallet": publicKey },
@@ -115,7 +118,7 @@ export function AdminConsole() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "목록 조회 실패");
     }
-  }, [isAdmin, publicKey, query]);
+  }, [isAdmin, publicKey, query, categoryFilter]);
 
   useEffect(() => {
     if (isAdmin) void refresh();
@@ -151,6 +154,7 @@ export function AdminConsole() {
     patch: Partial<
       Pick<
         RentalAssetRow,
+        | "category"
         | "user_name"
         | "division"
         | "department"
@@ -343,6 +347,18 @@ export function AdminConsole() {
               placeholder="관리번호/모델/사용자 검색"
               className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
             />
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
+            >
+              <option value="">전체 카테고리</option>
+              {RENTAL_ASSET_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         {selectable.length > 0 && (
@@ -385,11 +401,12 @@ export function AdminConsole() {
           </div>
         )}
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1500px] border-collapse whitespace-nowrap text-left text-sm">
+          <table className="w-full min-w-[1600px] border-collapse whitespace-nowrap text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">선택</th>
                 <th className="px-3 py-2 font-medium">관리번호</th>
+                <th className="px-3 py-2 font-medium">카테고리</th>
                 <th className="px-3 py-2 font-medium">모델명</th>
                 <th className="px-3 py-2 font-medium">사용자</th>
                 <th className="px-3 py-2 font-medium">부문</th>
@@ -436,6 +453,26 @@ export function AdminConsole() {
                     >
                       이관 그래프 ↗
                     </Link>
+                  </td>
+                  <td className="px-3 py-2">
+                    <select
+                      defaultValue={a.category ?? ""}
+                      disabled={busy === a.management_no}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (v !== (a.category ?? "")) {
+                          void handleUpdate(a, { category: v || null });
+                        }
+                      }}
+                      className="w-32 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                    >
+                      <option value="">—</option>
+                      {RENTAL_ASSET_CATEGORIES.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </select>
                   </td>
                   <td className="px-3 py-2 text-xs">{a.model_name}</td>
                   <td className="px-3 py-2">

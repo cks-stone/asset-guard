@@ -7,6 +7,7 @@ import { AdminConsole } from "@/components/admin-console";
 import { useWallet } from "@/lib/wallet/wallet-context";
 import { BillingCalendar, buildYearPayments } from "@/components/billing-calendar";
 import { isValidSolanaAddress } from "@/lib/admin";
+import { RENTAL_ASSET_CATEGORIES } from "@/lib/supabase/types";
 import type {
   BillingCycle,
   RentalAssetRow,
@@ -39,6 +40,7 @@ const emptyForm = {
   serial_no: "",
   order_no: "",
   model_name: "",
+  category: "",
   manufacturer: "",
   user_name: "",
   division: "",
@@ -57,6 +59,8 @@ export function Dashboard() {
 
   const [assets, setAssets] = useState<RentalAssetRow[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [idleCategoryFilter, setIdleCategoryFilter] = useState("");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -222,6 +226,7 @@ export function Dashboard() {
     try {
       const url = new URL("/api/rental-assets", window.location.origin);
       if (statusFilter) url.searchParams.set("status", statusFilter);
+      if (categoryFilter) url.searchParams.set("category", categoryFilter);
       if (query.trim()) url.searchParams.set("q", query.trim());
       const res = await fetch(url, {
         headers: { "x-wallet": publicKey },
@@ -245,7 +250,7 @@ export function Dashboard() {
     } finally {
       setLoading(false);
     }
-  }, [publicKey, statusFilter, query]);
+  }, [publicKey, statusFilter, categoryFilter, query]);
 
   useEffect(() => {
     void refresh();
@@ -261,10 +266,12 @@ export function Dashboard() {
     if (!publicKey) return;
     if (!quiet) setIdleLoading(true);
     try {
-      const res = await fetch(
-        new URL("/api/rental-assets?idle=1", window.location.origin),
-        { headers: { "x-wallet": publicKey } },
-      );
+      const url = new URL("/api/rental-assets?idle=1", window.location.origin);
+      if (idleCategoryFilter)
+        url.searchParams.set("category", idleCategoryFilter);
+      const res = await fetch(url, {
+        headers: { "x-wallet": publicKey },
+      });
       const json = (await readJson(res)) as { error?: string; data?: RentalAssetRow[] };
       if (res.ok) setIdleAssets(json.data ?? []);
     } catch (err) {
@@ -272,7 +279,7 @@ export function Dashboard() {
     } finally {
       setIdleLoading(false);
     }
-  }, [publicKey]);
+  }, [publicKey, idleCategoryFilter]);
 
   useEffect(() => {
     if (publicKey) void refreshIdle();
@@ -341,6 +348,7 @@ export function Dashboard() {
       const body: Record<string, string | number | null> = {
         management_no: form.management_no.trim(),
         model_name: form.model_name.trim(),
+        category: form.category.trim() || null,
         status: form.status,
         billing_cycle: form.billing_cycle,
       };
@@ -475,7 +483,7 @@ export function Dashboard() {
   const statCards = [
     { label: "총 렌탈 자산", value: stats.total, accent: "text-neutral-200" },
     { label: "정상사용", value: stats.countByStatus("정상사용"), accent: "text-emerald-300" },
-    { label: "유휴", value: idleAssets.length, accent: "text-sky-300" },
+    { label: "유휴", value: stats.countByStatus("유휴"), accent: "text-sky-300" },
     {
       label: "이전 진행",
       value:
@@ -562,6 +570,18 @@ export function Dashboard() {
             placeholder="모델명 (예: Dell Latitude 5530) *"
             className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
           />
+          <select
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+            className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
+          >
+            <option value="">카테고리 선택</option>
+            {RENTAL_ASSET_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
           <input
             value={form.manufacturer}
             onChange={(e) => setForm({ ...form, manufacturer: e.target.value })}
@@ -672,6 +692,18 @@ export function Dashboard() {
               <option value="유휴">유휴</option>
               <option value="계약종료">계약종료</option>
             </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
+            >
+              <option value="">전체 카테고리</option>
+              {RENTAL_ASSET_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         {loading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}
@@ -679,10 +711,11 @@ export function Dashboard() {
           <p className="mt-3 text-sm text-neutral-500">등록된 렌탈 자산이 없습니다.</p>
         )}
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1080px] whitespace-nowrap border-collapse text-left text-sm">
+          <table className="w-full min-w-[1220px] whitespace-nowrap border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">관리번호</th>
+                <th className="px-3 py-2 font-medium">카테고리</th>
                 <th className="px-3 py-2 font-medium">모델명</th>
                 <th className="px-3 py-2 font-medium">제조사</th>
                 <th className="px-3 py-2 font-medium">사용자</th>
@@ -707,6 +740,15 @@ export function Dashboard() {
                     >
                       이관 그래프 ↗
                     </Link>
+                  </td>
+                  <td className="px-3 py-2">
+                    {a.category ? (
+                      <span className="rounded bg-neutral-700/40 px-2 py-0.5 text-xs text-neutral-200">
+                        {a.category}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-neutral-600">—</span>
+                    )}
                   </td>
                   <td className="px-3 py-2">
                     {a.model_name}
@@ -856,24 +898,42 @@ export function Dashboard() {
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">유휴 자산 (전사 공개)</h2>
-          <span className="text-xs text-neutral-500">
-            로그인한 모든 사용자가 회사 전체 유휴 자산을 볼 수 있습니다.
-          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-neutral-500">
+              로그인한 모든 사용자가 회사 전체 유휴 자산을 볼 수 있습니다.
+            </span>
+            <select
+              value={idleCategoryFilter}
+              onChange={(e) => setIdleCategoryFilter(e.target.value)}
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
+            >
+              <option value="">전체 카테고리</option>
+              {RENTAL_ASSET_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         {idleLoading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}
         {!idleLoading && idleAssets.length === 0 && (
           <p className="mt-3 text-sm text-neutral-500">현재 유휴 상태인 자산이 없습니다.</p>
         )}
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[760px] whitespace-nowrap border-collapse text-left text-sm">
+          <table className="w-full min-w-[1100px] whitespace-nowrap border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">관리번호</th>
+                <th className="px-3 py-2 font-medium">카테고리</th>
                 <th className="px-3 py-2 font-medium">모델명</th>
+                <th className="px-3 py-2 font-medium">제조사</th>
                 <th className="px-3 py-2 font-medium">사용자</th>
                 <th className="px-3 py-2 font-medium">부문/팀</th>
                 <th className="px-3 py-2 font-medium">렌탈사</th>
+                <th className="px-3 py-2 font-medium">청구</th>
                 <th className="px-3 py-2 font-medium">렌탈료</th>
+                <th className="px-3 py-2 font-medium">렌탈 시작일</th>
                 <th className="px-3 py-2 font-medium">렌탈 종료일</th>
                 <th className="px-3 py-2 font-medium">상태</th>
               </tr>
@@ -890,7 +950,16 @@ export function Dashboard() {
                       이관 그래프 ↗
                     </Link>
                   </td>
-                  <td className="px-3 py-2 text-xs">
+                  <td className="px-3 py-2">
+                    {a.category ? (
+                      <span className="rounded bg-neutral-700/40 px-2 py-0.5 text-xs text-neutral-200">
+                        {a.category}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-neutral-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2">
                     {a.model_name}
                     {a.serial_no && (
                       <span className="ml-2 text-[10px] font-mono text-neutral-500">
@@ -898,6 +967,7 @@ export function Dashboard() {
                       </span>
                     )}
                   </td>
+                  <td className="px-3 py-2 text-xs">{a.manufacturer ?? "—"}</td>
                   <td className="px-3 py-2">{a.user_name ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">
                     {a.division && <span>{a.division}</span>}
@@ -907,8 +977,17 @@ export function Dashboard() {
                   </td>
                   <td className="px-3 py-2 text-xs">{a.rental_company ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">
+                    {a.billing_cycle ?? "—"}
+                    {a.billing_month && (
+                      <span className="ml-2 text-[10px] text-neutral-500">
+                        {a.billing_month}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-3 py-2 text-xs">
                     {a.rental_fee != null ? `${a.rental_fee.toLocaleString()}원` : "—"}
                   </td>
+                  <td className="px-3 py-2 text-xs">{a.rental_start_date ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">{a.rental_end_date ?? "—"}</td>
                   <td className="px-3 py-2">
                     <span

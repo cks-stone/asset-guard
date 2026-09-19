@@ -2,12 +2,57 @@
 
 export type RentalAssetStatus = "정상사용" | "유휴" | "계약종료";
 export type BillingCycle = "월납" | "연납" | "반기납" | "일시납";
+export type RentalAssetCategory =
+  | "모니터"
+  | "노트북"
+  | "데스크톱 PC"
+  | "네트워크장비"
+  | "공유기"
+  | "스위치"
+  | "태블릿"
+  | "스마트폰"
+  | "프린터"
+  | "복합기"
+  | "서버"
+  | "스토리지"
+  | "TV"
+  | "정수기"
+  | "제빙기"
+  | "공기청정기"
+  | "냉난방기"
+  | "안마의자"
+  | "커피머신"
+  | "냉장고";
+
+export const RENTAL_ASSET_CATEGORIES: RentalAssetCategory[] = [
+  "모니터",
+  "노트북",
+  "데스크톱 PC",
+  "네트워크장비",
+  "공유기",
+  "스위치",
+  "태블릿",
+  "스마트폰",
+  "프린터",
+  "복합기",
+  "서버",
+  "스토리지",
+  "TV",
+  "정수기",
+  "제빙기",
+  "공기청정기",
+  "냉난방기",
+  "안마의자",
+  "커피머신",
+  "냉장고",
+];
 
 export interface RentalAssetRow {
   management_no: string;
   serial_no: string | null;
   order_no: string | null;
   model_name: string;
+  category: string | null;
   manufacturer: string | null;
   user_name: string | null;
   division: string | null;

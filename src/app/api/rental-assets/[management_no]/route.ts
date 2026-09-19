@@ -16,6 +16,7 @@ const updateRentalAssetSchema = z
     serial_no: z.string().trim().max(100).nullable().optional(),
     order_no: z.string().trim().max(64).nullable().optional(),
     model_name: z.string().trim().min(1).max(200).optional(),
+    category: z.string().trim().max(64).nullable().optional(),
     manufacturer: z.string().trim().max(64).nullable().optional(),
     user_name: z.string().trim().max(64).nullable().optional(),
     division: z.string().trim().max(64).nullable().optional(),
