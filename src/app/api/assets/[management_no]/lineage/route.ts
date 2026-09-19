@@ -45,17 +45,25 @@ export async function GET(
     if (asset.managed_by) wallets.add(asset.managed_by);
 
     const labels: Record<string, string | null> = {};
+    const orgs: Record<string, { division: string | null; department: string | null }> = {};
     if (wallets.size > 0) {
       const { data: labelRows } = await supabase
         .from("wallet_labels")
-        .select("wallet_address, label")
+        .select("wallet_address, label, division, department")
         .in("wallet_address", [...wallets]);
-      for (const row of labelRows ?? []) labels[row.wallet_address] = row.label;
+      for (const row of labelRows ?? []) {
+        labels[row.wallet_address] = row.label;
+        orgs[row.wallet_address] = {
+          division: row.division,
+          department: row.department,
+        };
+      }
     }
 
     return NextResponse.json({
       asset,
       labels,
+      orgs,
       transfers: (transfers ?? []).map((t) => ({
         from: t.from_wallet as string | null,
         to: t.to_wallet as string,

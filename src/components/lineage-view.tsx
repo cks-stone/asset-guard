@@ -12,6 +12,7 @@ import {
 interface LineageResponse {
   asset: LineageAssetInfo;
   labels: Record<string, string | null>;
+  orgs: Record<string, { division: string | null; department: string | null }>;
   transfers: TransferEdge[];
 }
 
@@ -36,7 +37,12 @@ export function LineageView({ managementNo }: { managementNo: string }) {
       };
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       if (!json.asset || !json.transfers) throw new Error("이관 이력을 불러오지 못했습니다");
-      setData(json as LineageResponse);
+      setData({
+        asset: json.asset,
+        labels: json.labels ?? {},
+        orgs: json.orgs ?? {},
+        transfers: json.transfers,
+      } as LineageResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : "이관 이력 조회 실패");
     } finally {
@@ -106,6 +112,7 @@ export function LineageView({ managementNo }: { managementNo: string }) {
           <LineageGraph
             asset={data.asset}
             labels={data.labels}
+            orgs={data.orgs}
             transfers={data.transfers}
             currentManagedBy={data.asset.managed_by}
             viewer={publicKey}

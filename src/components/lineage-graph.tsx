@@ -33,9 +33,15 @@ export interface LineageAssetInfo {
   managed_by: string | null;
 }
 
+interface WalletOrg {
+  division: string | null;
+  department: string | null;
+}
+
 interface LineageGraphProps {
   asset: LineageAssetInfo;
   labels: Record<string, string | null>;
+  orgs: Record<string, WalletOrg>;
   transfers: TransferEdge[];
   currentManagedBy: string | null;
   viewer: string | null;
@@ -54,6 +60,7 @@ function hueFor(wallet: string): number {
 interface WalletNodeData {
   wallet: string;
   label: string | null;
+  org: string | null;
   current: boolean;
   mine: boolean;
 }
@@ -66,11 +73,11 @@ const handleStyle: CSSProperties = {
 };
 
 function WalletFlowNode({ data }: NodeProps) {
-  const { wallet, label, current, mine } = data as unknown as WalletNodeData;
+  const { wallet, label, org, current, mine } = data as unknown as WalletNodeData;
   const hue = hueFor(wallet);
   return (
     <div
-      className="relative flex h-[84px] w-52 flex-col justify-center gap-0.5 overflow-visible rounded-lg border px-3 py-2"
+      className="relative flex h-[108px] w-52 flex-col justify-center gap-0.5 overflow-visible rounded-lg border px-3 py-2"
       style={{
         borderColor: `hsl(${hue} 60% 45%)`,
         background: `hsl(${hue} 60% 18% / 0.55)`,
@@ -92,6 +99,7 @@ function WalletFlowNode({ data }: NodeProps) {
         />
         <span className="truncate">{label ?? `미등록 지갑`}</span>
       </span>
+      {org && <span className="pl-4 text-[10px] text-neutral-300">{org}</span>}
       <span className="pl-4 font-mono text-[10px] text-neutral-400">
         {shortAddr(wallet)}
       </span>
@@ -199,6 +207,7 @@ const formatTime = (iso: string) => {
 export function LineageGraph({
   asset,
   labels,
+  orgs,
   transfers,
   currentManagedBy,
   viewer,
@@ -226,7 +235,7 @@ export function LineageGraph({
   // 노드 간 간격은 가로·세로 동일하게 유지 (이전 대비 2배).
   const COLS = 3;
   const NODE_W = 208;
-  const NODE_H = 84;
+  const NODE_H = 108;
   const GAP = 144;
   const COL_W = NODE_W + GAP;
   const ROW_H = NODE_H + GAP;
@@ -247,12 +256,20 @@ export function LineageGraph({
           data: {
             wallet: w,
             label: labels[w] ?? null,
+            org: (() => {
+              const org = orgs[w];
+              if (!org) return null;
+              const parts = [org.division, org.department].filter(
+                (v): v is string => !!v && v.trim().length > 0,
+              );
+              return parts.length > 0 ? parts.join(" · ") : null;
+            })(),
             current: w === currentManagedBy,
             mine: w === viewer,
           },
         };
       }),
-    [pathWallets, labels, currentManagedBy, viewer],
+    [pathWallets, labels, orgs, currentManagedBy, viewer],
   );
 
   const edges = useMemo<Edge[]>(() => {
