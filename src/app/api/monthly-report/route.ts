@@ -84,24 +84,23 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    const [{ data: assets }, { data: profiles }, { data: labels }] =
-      await Promise.all([
+    const [{ data: assets }, { data: profiles }] = await Promise.all([
         supabase.from("rental_assets").select("*"),
         supabase
           .from("employee_profiles")
           .select(
-            "wallet_address, employment_status, work_location, job_title, hire_date, departure_date",
+            "user_name, wallet_address, employment_status, work_location, job_title, hire_date, departure_date",
           ),
-        supabase
-          .from("wallet_labels")
-          .select("wallet_address, label"),
       ]);
 
-    const profileByWallet = new Map(
-      (profiles ?? []).map((p) => [p.wallet_address.toLowerCase(), p]),
+    // 인사 프로필 매칭 — 1순위 user_name(렌탈리스트 사용자명), 2순위 managed_by 지갑
+    const profileByUser = new Map(
+      (profiles ?? []).map((p) => [p.user_name?.trim().toLowerCase(), p]),
     );
-    const labelByWallet = new Map(
-      (labels ?? []).map((l) => [l.wallet_address.toLowerCase(), l.label]),
+    const profileByWallet = new Map(
+      (profiles ?? []).flatMap((p) =>
+        p.wallet_address ? [[p.wallet_address.toLowerCase(), p] as const] : [],
+      ),
     );
 
     const confirmItems: MonthlyConfirmItem[] = [];
@@ -109,11 +108,16 @@ export async function GET(req: NextRequest) {
 
     const rows = (assets ?? []) as unknown as RentalAssetRow[];
     for (const a of rows) {
-      const profKey = a.managed_by?.toLowerCase();
-      const profile = profKey ? profileByWallet.get(profKey) : undefined;
+      // 인사 프로필 매칭 — 1순위 user_name(렌탈리스트 사용자명), 2순위 managed_by 지갑
+      const nameKey = a.user_name?.trim().toLowerCase() ?? "";
+      const profile =
+        (nameKey ? profileByUser.get(nameKey) : undefined) ??
+        (a.managed_by
+          ? profileByWallet.get(a.managed_by.toLowerCase())
+          : undefined);
 
       if (a.status !== "계약종료") {
-        if (profile && a.managed_by) {
+        if (profile) {
           const hireInMonth = !!profile.hire_date?.startsWith(month);
           const departInMonth = !!profile.departure_date?.startsWith(month);
           const rule = confirmRuleFor(
@@ -132,7 +136,7 @@ export async function GET(req: NextRequest) {
               department: a.department,
               location: a.location,
               status: a.status,
-              employer: profKey ? (labelByWallet.get(profKey) ?? null) : null,
+              employer: null,
               employment_status: profile.employment_status,
               work_location: profile.work_location,
               job_title: profile.job_title,

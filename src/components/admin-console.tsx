@@ -32,7 +32,7 @@ const shortAddr = (addr: string | null | undefined) =>
   addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
 
 interface HrDraft {
-  wallet_address: string;
+  user_name: string;
   employment_status: EmploymentStatus;
   work_location: WorkLocation;
   job_title: string;
@@ -41,8 +41,8 @@ interface HrDraft {
   note: string;
 }
 
-const emptyHrDraft = (wallet: string): HrDraft => ({
-  wallet_address: wallet,
+const emptyHrDraft = (user: string): HrDraft => ({
+  user_name: user,
   employment_status: "재직",
   work_location: "본사",
   job_title: "",
@@ -66,7 +66,7 @@ export function AdminConsole() {
   const [hrDrafts, setHrDrafts] = useState<Record<string, HrDraft>>({});
   const [hrQ, setHrQ] = useState("");
   const [hrBusy, setHrBusy] = useState<string | null>(null);
-  const [hrNewWallet, setHrNewWallet] = useState("");
+  const [hrNewUser, setHrNewUser] = useState("");
   const hrQRef = useRef("");
   // 변경 감지용 이전 스냅샷 — 자동 재조회(폴링·포커스·가시성 복귀 = quiet)에서
   // diff를 건너뛰어 목록 전체가 깜빡이지 않게 한다. 깜빡임은 액션 직후 refresh()에서만.
@@ -180,11 +180,11 @@ export function AdminConsole() {
         setHrDrafts((prev) => {
           const next = { ...prev };
           for (const p of list) {
-            if (!next[p.wallet_address]) {
-              next[p.wallet_address] = {
-                ...emptyHrDraft(p.wallet_address),
-                employment_status: p.employment_status,
-                work_location: p.work_location,
+            if (!next[p.user_name]) {
+              next[p.user_name] = {
+                ...emptyHrDraft(p.user_name),
+                employment_status: p.employment_status ?? "재직",
+                work_location: p.work_location ?? "본사",
                 job_title: p.job_title ?? "",
                 hire_date: p.hire_date ?? "",
                 departure_date: p.departure_date ?? "",
@@ -205,18 +205,18 @@ export function AdminConsole() {
     if (isAdmin) void fetchHr();
   }, [isAdmin, fetchHr]);
 
-  const setHrDraft = (wallet: string, patch: Partial<HrDraft>) => {
+  const setHrDraft = (user: string, patch: Partial<HrDraft>) => {
     setHrDrafts((prev) => ({
       ...prev,
-      [wallet]: { ...(prev[wallet] ?? emptyHrDraft(wallet)), ...patch },
+      [user]: { ...(prev[user] ?? emptyHrDraft(user)), ...patch },
     }));
   };
 
-  const saveHr = async (wallet: string) => {
+  const saveHr = async (user: string) => {
     if (!isAdmin || !publicKey) return;
-    const d = hrDrafts[wallet];
+    const d = hrDrafts[user];
     if (!d) return;
-    setHrBusy(wallet);
+    setHrBusy(user);
     setError(null);
     setNotice(null);
     try {
@@ -227,7 +227,7 @@ export function AdminConsole() {
           "x-admin-wallet": publicKey,
         },
         body: JSON.stringify({
-          wallet_address: d.wallet_address,
+          user_name: d.user_name,
           employment_status: d.employment_status,
           work_location: d.work_location,
           job_title: d.job_title || null,
@@ -238,8 +238,8 @@ export function AdminConsole() {
       });
       const json = await readJson(res);
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
-      setNotice(`${shortAddr(wallet)} 인사 정보 저장 완료.`);
-      setHrNewWallet("");
+      setNotice(`"${d.user_name}" 인사 정보 저장 완료.`);
+      setHrNewUser("");
       void fetchHr();
     } catch (err) {
       setError(err instanceof Error ? err.message : "인사 정보 저장 실패");
@@ -250,8 +250,8 @@ export function AdminConsole() {
 
   const registerHr = async () => {
     if (!isAdmin || !publicKey) return;
-    const w = hrNewWallet.trim();
-    if (!w) return;
+    const name = hrNewUser.trim();
+    if (!name) return;
     setHrBusy("__new__");
     setError(null);
     setNotice(null);
@@ -263,15 +263,15 @@ export function AdminConsole() {
           "x-admin-wallet": publicKey,
         },
         body: JSON.stringify({
-          wallet_address: w,
+          user_name: name,
           employment_status: "재직",
           work_location: "본사",
         }),
       });
       const json = await readJson(res);
       if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
-      setNotice(`${shortAddr(w)} 인사 프로필 등록 완료.`);
-      setHrNewWallet("");
+      setNotice(`"${name}" 인사 프로필 등록 완료.`);
+      setHrNewUser("");
       void fetchHr();
     } catch (err) {
       setError(err instanceof Error ? err.message : "인사 프로필 등록 실패");
@@ -827,15 +827,15 @@ export function AdminConsole() {
           <div className="flex flex-wrap items-center gap-2">
             <input
               type="text"
-              value={hrNewWallet}
+              value={hrNewUser}
               disabled={hrBusy === "__new__"}
-              onChange={(e) => setHrNewWallet(e.target.value)}
-              placeholder="지갑 주소로 새 인사 프로필 등록"
+              onChange={(e) => setHrNewUser(e.target.value)}
+              placeholder="렌탈리스트 외 사용자 이름으로 새 인사 프로필 추가"
               className="min-w-[18rem] flex-1 rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
             />
             <button
               onClick={() => void registerHr()}
-              disabled={hrBusy === "__new__" || !hrNewWallet.trim()}
+              disabled={hrBusy === "__new__" || !hrNewUser.trim()}
               className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium transition hover:bg-emerald-500 disabled:opacity-50"
             >
               {hrBusy === "__new__" ? "등록 중…" : "등록"}
@@ -844,10 +844,11 @@ export function AdminConsole() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="w-full min-w-[1100px]">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 text-left font-medium">이름</th>
+                <th className="px-3 py-2 text-left font-medium">출처</th>
                 <th className="px-3 py-2 text-left font-medium">부문/팀</th>
                 <th className="px-3 py-2 text-left font-medium">지갑</th>
                 <th className="px-3 py-2 text-left font-medium">인사상태</th>
@@ -861,25 +862,47 @@ export function AdminConsole() {
             </thead>
             <tbody>
               {hrList.map((p) => {
-                const d = hrDrafts[p.wallet_address] ?? emptyHrDraft(p.wallet_address);
-                const saving = hrBusy === p.wallet_address;
+                const d = hrDrafts[p.user_name] ?? emptyHrDraft(p.user_name);
+                const saving = hrBusy === p.user_name;
                 return (
-                  <tr key={p.wallet_address} className="border-b border-neutral-800/70 align-middle">
+                  <tr key={p.user_name} className="border-b border-neutral-800/70 align-middle">
                     <td className="px-3 py-2 text-sm font-medium">
-                      {p.label ?? <span className="text-neutral-600">(미등록 이름)</span>}
+                      {p.user_name}
+                      {p.wallet_address === null && (
+                        <span className="ml-1 align-middle text-[10px] text-neutral-500">
+                          (지갑 미연결)
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2">
+                      {p.source ? (
+                        <span
+                          className={`rounded px-2 py-0.5 text-[10px] whitespace-nowrap ${
+                            p.source === "렌탈리스트"
+                              ? "bg-sky-500/15 text-sky-300"
+                              : "bg-violet-500/15 text-violet-300"
+                          }`}
+                        >
+                          {p.source} 인수 대기
+                        </span>
+                      ) : (
+                        <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">
+                          입력됨
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2 text-xs text-neutral-300">
                       {[p.division, p.department].filter(Boolean).join(" / ") || "—"}
                     </td>
                     <td className="px-3 py-2 font-mono text-[10px] text-neutral-500">
-                      {shortAddr(p.wallet_address)}
+                      {p.wallet_address ? shortAddr(p.wallet_address) : "—"}
                     </td>
                     <td className="px-3 py-2">
                       <select
                         value={d.employment_status}
                         disabled={saving}
                         onChange={(e) =>
-                          setHrDraft(p.wallet_address, {
+                          setHrDraft(p.user_name, {
                             employment_status: e.target.value as EmploymentStatus,
                           })
                         }
@@ -897,7 +920,7 @@ export function AdminConsole() {
                         value={d.work_location}
                         disabled={saving}
                         onChange={(e) =>
-                          setHrDraft(p.wallet_address, {
+                          setHrDraft(p.user_name, {
                             work_location: e.target.value as WorkLocation,
                           })
                         }
@@ -916,7 +939,7 @@ export function AdminConsole() {
                         value={d.job_title}
                         disabled={saving}
                         onChange={(e) =>
-                          setHrDraft(p.wallet_address, { job_title: e.target.value })
+                          setHrDraft(p.user_name, { job_title: e.target.value })
                         }
                         className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                       />
@@ -927,7 +950,7 @@ export function AdminConsole() {
                         value={d.hire_date}
                         disabled={saving}
                         onChange={(e) =>
-                          setHrDraft(p.wallet_address, { hire_date: e.target.value })
+                          setHrDraft(p.user_name, { hire_date: e.target.value })
                         }
                         className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                       />
@@ -938,7 +961,7 @@ export function AdminConsole() {
                         value={d.departure_date}
                         disabled={saving}
                         onChange={(e) =>
-                          setHrDraft(p.wallet_address, { departure_date: e.target.value })
+                          setHrDraft(p.user_name, { departure_date: e.target.value })
                         }
                         className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                       />
@@ -949,7 +972,7 @@ export function AdminConsole() {
                         value={d.note}
                         disabled={saving}
                         onChange={(e) =>
-                          setHrDraft(p.wallet_address, { note: e.target.value })
+                          setHrDraft(p.user_name, { note: e.target.value })
                         }
                         placeholder="—"
                         className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
@@ -957,7 +980,7 @@ export function AdminConsole() {
                     </td>
                     <td className="px-3 py-2">
                       <button
-                        onClick={() => void saveHr(p.wallet_address)}
+                        onClick={() => void saveHr(p.user_name)}
                         disabled={saving}
                         className="rounded bg-neutral-700 px-3 py-1 text-xs transition hover:bg-neutral-600 disabled:opacity-50"
                       >
@@ -969,8 +992,8 @@ export function AdminConsole() {
               })}
               {!hrList.length && (
                 <tr>
-                  <td colSpan={10} className="px-3 py-4 text-center text-sm text-neutral-500">
-                    인사 프로필이 없습니다. 위 입력란에 지갑 주소를 넣고 등록해 주세요.
+                  <td colSpan={11} className="px-3 py-4 text-center text-sm text-neutral-500">
+                    인사 프로필이 없습니다. 위 입력란에 사용자 이름을 넣고 등록해 주세요.
                   </td>
                 </tr>
               )}

@@ -134,7 +134,8 @@ export type RentalAssetUpdate = Partial<
 >;
 
 export interface EmployeeProfileRow {
-  wallet_address: string;
+  user_name: string;
+  wallet_address: string | null;
   employment_status: EmploymentStatus;
   work_location: WorkLocation;
   job_title: string | null;
@@ -197,10 +198,8 @@ export interface Database {
       employee_profiles: {
         Row: EmployeeProfileRow;
         Insert: Partial<EmployeeProfileRow> &
-          Pick<EmployeeProfileRow, "wallet_address">;
-        Update: Partial<
-          Omit<EmployeeProfileRow, "wallet_address" | "updated_at">
-        >;
+          Pick<EmployeeProfileRow, "user_name">;
+        Update: Partial<Omit<EmployeeProfileRow, "user_name" | "updated_at">>;
         Relationships: [];
       };
     };
