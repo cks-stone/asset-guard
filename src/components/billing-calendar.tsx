@@ -112,6 +112,11 @@ export function BillingCalendar({ assets }: { assets: RentalAssetRow[] }) {
   const today = new Date().getFullYear();
   const [year, setYear] = useState<number>(years.includes(today) ? today : years[0]);
 
+  // 오늘 날짜 기준 현재 연도·월 — 현재 연도 달력에서만 해당 월 컬럼을 하이라이트한다.
+  const now = new Date();
+  const isCurrentCol = (m: number) =>
+    year === now.getFullYear() && m === now.getMonth() + 1;
+
   const data = useMemo(() => buildYearPayments(assets, year), [assets, year]);
 
   return (
@@ -147,11 +152,21 @@ export function BillingCalendar({ assets }: { assets: RentalAssetRow[] }) {
           <thead>
             <tr className="border-b border-neutral-700 text-center text-xs text-neutral-400">
               <th className="px-3 py-2 text-left font-medium">자산</th>
-              {MONTHS.map((m) => (
-                <th key={m} className="min-w-[76px] px-2 py-2 font-medium">
-                  {m}
-                </th>
-              ))}
+              {MONTHS.map((m, i) => {
+                const cur = isCurrentCol(i + 1);
+                return (
+                  <th
+                    key={m}
+                    className={`min-w-[76px] px-2 py-2 font-medium ${
+                      cur
+                        ? "border-x border-t border-b border-violet-400 bg-violet-500/10 text-violet-200"
+                        : ""
+                    }`}
+                  >
+                    {m}
+                  </th>
+                );
+              })}
               <th className="min-w-[90px] px-3 py-2 text-right font-medium">합계</th>
             </tr>
           </thead>
@@ -174,6 +189,8 @@ export function BillingCalendar({ assets }: { assets: RentalAssetRow[] }) {
                       <td
                         key={i}
                         className={`px-2 py-2 text-right font-mono text-[11px] ${
+                          isCurrentCol(m) ? "border-x border-violet-400 bg-violet-500/5" : ""
+                        } ${
                           v > 0
                             ? "text-neutral-200"
                             : expired
@@ -213,6 +230,10 @@ export function BillingCalendar({ assets }: { assets: RentalAssetRow[] }) {
                   <td
                     key={i}
                     className={`px-2 py-2 font-mono text-xs ${
+                      isCurrentCol(i + 1)
+                        ? "border-x border-b border-violet-400 bg-violet-500/10"
+                        : ""
+                    } ${
                       v > 0 ? "text-neutral-50" : "text-neutral-600"
                     }`}
                   >
