@@ -392,8 +392,8 @@ export function AdminConsole() {
             </span>
           </div>
         )}
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1600px] border-collapse whitespace-nowrap text-left text-sm">
+        <div className="mt-4">
+          <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">선택</th>
@@ -456,7 +456,7 @@ export function AdminConsole() {
                           void handleUpdate(a, { category: v || null });
                         }
                       }}
-                      className="w-32 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     >
                       <option value="">—</option>
                       {RENTAL_ASSET_CATEGORIES.map((c) => (
@@ -479,7 +479,7 @@ export function AdminConsole() {
                           void handleUpdate(a, { user_name: v || null });
                         }
                       }}
-                      className="w-28 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -494,7 +494,7 @@ export function AdminConsole() {
                           void handleUpdate(a, { division: v || null });
                         }
                       }}
-                      className="w-24 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -509,7 +509,7 @@ export function AdminConsole() {
                           void handleUpdate(a, { department: v || null });
                         }
                       }}
-                      className="w-20 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     />
                   </td>
                   <td className="px-3 py-2 text-xs">{a.rental_company ?? "—"}</td>
@@ -530,7 +530,7 @@ export function AdminConsole() {
                           void handleUpdate(a, { rental_fee: fee });
                         }
                       }}
-                      className="w-24 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     />
                   </td>
                   <td className="px-3 py-2">
@@ -544,7 +544,7 @@ export function AdminConsole() {
                           void handleUpdate(a, { rental_end_date: v || null });
                         }
                       }}
-                      className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
                     />
                   </td>
                   <td className="px-3 py-2">

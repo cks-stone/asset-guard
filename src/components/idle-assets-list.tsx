@@ -102,8 +102,8 @@ export function IdleAssetsList() {
         {!loading && idleAssets.length === 0 && (
           <p className="mt-3 text-sm text-neutral-500">현재 유휴 상태인 자산이 없습니다.</p>
         )}
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1100px] whitespace-nowrap border-collapse text-left text-sm">
+        <div className="mt-4">
+          <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">관리번호</th>
