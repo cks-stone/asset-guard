@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { CHAT_MENUS, GENERIC_REPLY } from "@/lib/chat/menus";
 
 type ChatRole = "user" | "bot";
@@ -9,6 +10,9 @@ interface ChatMessage {
   role: ChatRole;
   text: string;
 }
+
+const CHAT_MIN_W = 320;
+const CHAT_MIN_H = 320;
 
 function ChatBubbleIcon({ className }: { className?: string }) {
   return (
@@ -34,10 +38,46 @@ export function ChatBot() {
   ]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  // 패널 가로/세로 크기(px) — 우하단 핸들 드래그로 사용자가 임의 조절 가능.
+  const [size, setSize] = useState<{ w: number; h: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; w: number; h: number } | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open]);
+
+  const openChat = () => {
+    const maxW = window.innerWidth - 40;
+    const maxH = window.innerHeight - 96;
+    setSize({
+      w: Math.max(CHAT_MIN_W, Math.min(560, maxW)),
+      h: Math.max(CHAT_MIN_H, Math.min(Math.round(window.innerHeight * 0.7), maxH)),
+    });
+    setOpen(true);
+  };
+
+  const startResize = (e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!size) return;
+    e.preventDefault();
+    dragRef.current = { startX: e.clientX, startY: e.clientY, w: size.w, h: size.h };
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current;
+      if (!d) return;
+      const maxW = window.innerWidth - 40;
+      const maxH = window.innerHeight - 96;
+      setSize({
+        w: Math.max(CHAT_MIN_W, Math.min(d.w + (ev.clientX - d.startX), maxW)),
+        h: Math.max(CHAT_MIN_H, Math.min(d.h + (ev.clientY - d.startY), maxH)),
+      });
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
 
   const pushMessages = (userText: string, botText: string) => {
     setInput("");
@@ -62,7 +102,7 @@ export function ChatBot() {
     return (
       <button
         type="button"
-        onClick={() => setOpen(true)}
+        onClick={openChat}
         aria-label="챗봇 열기"
         className="fixed bottom-5 right-5 z-50 flex h-28 w-28 flex-col items-center justify-center gap-1 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-950/40 transition-colors hover:bg-violet-500"
       >
@@ -73,7 +113,10 @@ export function ChatBot() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex w-[min(540px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl shadow-black/50">
+    <div
+      className="fixed bottom-5 right-5 z-50 flex flex-col overflow-hidden rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl shadow-black/50"
+      style={size ? { width: size.w, height: size.h } : undefined}
+    >
       <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-white">
@@ -94,7 +137,7 @@ export function ChatBot() {
         </button>
       </div>
 
-      <div className="flex max-h-[60vh] flex-1 flex-col overflow-y-auto px-3 py-4">
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-4">
         <div className="flex flex-col gap-3">
           {messages.map((m, i) => (
             <div
@@ -148,6 +191,27 @@ export function ChatBot() {
           보내기
         </button>
       </div>
+
+      <button
+        type="button"
+        aria-label="챗봇 크기 조절"
+        onPointerDown={startResize}
+        className="absolute bottom-1 right-1 z-10 flex h-6 w-6 cursor-se-resize touch-none items-center justify-center text-neutral-600 hover:text-violet-400"
+      >
+        <svg
+          className="h-4 w-4"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          aria-hidden="true"
+        >
+          <path d="M14.5 6.5 6.5 14.5" />
+          <path d="M14.5 11.5 11.5 14.5" />
+          <path d="M14.5 1.5 1.5 14.5" opacity="0.45" />
+        </svg>
+      </button>
     </div>
   );
 }
