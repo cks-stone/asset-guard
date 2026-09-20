@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { CHAT_MENUS, GENERIC_REPLY } from "@/lib/chat/menus";
 
 type ChatRole = "user" | "bot";
 
@@ -8,27 +9,6 @@ interface ChatMessage {
   role: ChatRole;
   text: string;
 }
-
-const MENUS: { label: string; reply: string }[] = [
-  {
-    label: "앞으로 해야하는 업무내용",
-    reply:
-      "앞으로 해야 하는 업무 조회는 AI 연동이 필요합니다.\n연결되면 담당 자산의 예정 업무와 일정을 안내드릴게요.",
-  },
-  {
-    label: "렌탈 예상비용",
-    reply:
-      "렌탈 예상비용 확인은 AI 연동이 필요합니다.\n연결되면 청구 달력 기준으로 월별 비용을 계산해 드릴게요.",
-  },
-  {
-    label: "기타",
-    reply:
-      "기타 문의는 AI 연동이 필요합니다.\n현재는 AI 답변이 준비 중이에요. 곧 연결되면 실시간으로 답변드릴게요.",
-  },
-];
-
-const GENERIC_REPLY =
-  "(API 연동이 필요합니다)\n현재는 AI 답변이 준비 중이에요. 곧 연결되면 실시간으로 답변드릴게요.";
 
 function ChatBubbleIcon({ className }: { className?: string }) {
   return (
@@ -50,7 +30,7 @@ function ChatBubbleIcon({ className }: { className?: string }) {
 export function ChatBot() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "bot", text: "챗봇은 무엇을 도와드릴까요?" },
+    { role: "bot", text: "무엇을 도와드릴까요?" },
   ]);
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -68,7 +48,7 @@ export function ChatBot() {
     ]);
   };
 
-  const handleMenu = (menu: (typeof MENUS)[number]) => {
+  const handleMenu = (menu: (typeof CHAT_MENUS)[number]) => {
     pushMessages(menu.label, menu.reply);
   };
 
@@ -84,9 +64,10 @@ export function ChatBot() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="챗봇 열기"
-        className="fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-violet-600 text-white shadow-lg shadow-violet-950/40 transition-colors hover:bg-violet-500"
+        className="fixed bottom-5 right-5 z-50 flex h-28 w-28 flex-col items-center justify-center gap-1 rounded-full bg-violet-600 text-white shadow-lg shadow-violet-950/40 transition-colors hover:bg-violet-500"
       >
-        <ChatBubbleIcon className="h-6 w-6" />
+        <ChatBubbleIcon className="h-12 w-12" />
+        <span className="text-sm font-semibold">AI 챗봇</span>
       </button>
     );
   }
@@ -133,7 +114,7 @@ export function ChatBot() {
           ))}
 
           <div className="flex flex-wrap gap-2">
-            {MENUS.map((menu) => (
+            {CHAT_MENUS.map((menu) => (
               <button
                 key={menu.label}
                 type="button"
