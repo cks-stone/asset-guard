@@ -23,6 +23,15 @@ function parseBillMonths(text: string | null | undefined): number[] {
     .filter((m) => m >= 1 && m <= 12);
 }
 
+function isAfterEnd(asset: RentalAssetRow, year: number, month: number): boolean {
+  const end = asset.rental_end_date;
+  if (!end) return false;
+  const ey = new Date(end).getFullYear();
+  const em = new Date(end).getMonth() + 1;
+  if (!Number.isFinite(ey)) return false;
+  return year > ey || (year === ey && month > em);
+}
+
 interface YearPayments {
   rows: { asset: RentalAssetRow; monthly: Map<number, number> }[];
   byMonth: Map<number, number>;
@@ -44,12 +53,13 @@ export function buildYearPayments(assets: RentalAssetRow[], year: number): YearP
   for (const asset of assets) {
     const sy = yearOf(asset.rental_start_date);
     const ey = yearOf(asset.rental_end_date);
-    if ((sy && sy > year) || (ey && ey < year)) continue;
+    if (sy && sy > year) continue;
 
     const sm = asset.rental_start_date ? new Date(asset.rental_start_date).getMonth() + 1 : 1;
     const em = asset.rental_end_date ? new Date(asset.rental_end_date).getMonth() + 1 : 12;
     const firstMonth = sy && sy < year ? 1 : sm;
-    const lastMonth = ey && ey > year ? 12 : em;
+    // 청구 가능한 마지막 월 — 이미 종료된 연도면 0 (청구 없음, 칸만 '만기'로 표시)
+    const lastMonth = !ey ? 12 : ey > year ? 12 : ey === year ? em : 0;
     const fee = asset.rental_fee ?? 0;
     if (fee <= 0) continue;
 
@@ -74,7 +84,8 @@ export function buildYearPayments(assets: RentalAssetRow[], year: number): YearP
       if (sy === year) push(payMonth, fee);
     }
 
-    if (pushed) rows.push(row);
+    // 종료 후 연도에도 행을 유지 (12개월 모두 '만기'로 표시)
+    if (pushed || (ey && ey < year)) rows.push(row);
   }
 
   return { rows, byMonth, total };
@@ -92,7 +103,7 @@ export function BillingCalendar({ assets }: { assets: RentalAssetRow[] }) {
     });
     if (ys.length === 0) return [new Date().getFullYear()];
     const min = Math.min(...ys);
-    const max = Math.max(...ys);
+    const max = Math.max(new Date().getFullYear(), ...ys);
     const out: number[] = [];
     for (let y = min; y <= max; y++) out.push(y);
     return out;
@@ -156,15 +167,21 @@ export function BillingCalendar({ assets }: { assets: RentalAssetRow[] }) {
                     <span className="ml-2 text-xs">{asset.model_name}</span>
                   </td>
                   {MONTHS.map((_, i) => {
-                    const v = monthly.get(i + 1) ?? 0;
+                    const m = i + 1;
+                    const v = monthly.get(m) ?? 0;
+                    const expired = isAfterEnd(asset, year, m);
                     return (
                       <td
                         key={i}
                         className={`px-2 py-2 text-right font-mono text-[11px] ${
-                          v > 0 ? "text-neutral-200" : "text-neutral-700"
+                          v > 0
+                            ? "text-neutral-200"
+                            : expired
+                              ? "text-amber-500/80"
+                              : "text-neutral-700"
                         }`}
                       >
-                        {v > 0 ? fmt(v) : "—"}
+                        {v > 0 ? fmt(v) : expired ? "만기" : "—"}
                       </td>
                     );
                   })}
