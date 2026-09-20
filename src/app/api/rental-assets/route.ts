@@ -55,6 +55,9 @@ export async function GET(req: NextRequest) {
     const statusParam = searchParams.get("status") as RentalAssetStatus | null;
     const categoryParam = searchParams.get("category");
     const q = searchParams.get("q");
+    const managementNoParam = searchParams.get("management_no");
+    const serialNoParam = searchParams.get("serial_no");
+    const userNameParam = searchParams.get("user_name");
     const modelParam = searchParams.get("model");
     const manufacturerParam = searchParams.get("manufacturer");
     const divisionParam = searchParams.get("division");
@@ -121,6 +124,9 @@ export async function GET(req: NextRequest) {
     const textFilter = (field: string, value: string | null) => {
       if (value && value.trim()) query = query.ilike(field, `%${value.trim()}%`);
     };
+    textFilter("management_no", managementNoParam);
+    textFilter("serial_no", serialNoParam);
+    textFilter("user_name", userNameParam);
     textFilter("model_name", modelParam);
     textFilter("manufacturer", manufacturerParam);
     textFilter("division", divisionParam);

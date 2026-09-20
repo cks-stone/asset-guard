@@ -3,6 +3,9 @@
 
 export interface AssetFilters {
   query: string;
+  managementNo: string;
+  serialNo: string;
+  userName: string;
   category: string;
   modelName: string;
   manufacturer: string;
@@ -21,6 +24,9 @@ export interface AssetFilters {
 
 export const EMPTY_FILTERS: AssetFilters = {
   query: "",
+  managementNo: "",
+  serialNo: "",
+  userName: "",
   category: "",
   modelName: "",
   manufacturer: "",
@@ -39,6 +45,9 @@ export const EMPTY_FILTERS: AssetFilters = {
 
 const PARAM_KEYS: Record<keyof AssetFilters, string> = {
   query: "q",
+  managementNo: "management_no",
+  serialNo: "serial_no",
+  userName: "user_name",
   category: "category",
   modelName: "model",
   manufacturer: "manufacturer",

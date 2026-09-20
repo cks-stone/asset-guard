@@ -32,12 +32,28 @@ export function AssetFilterBar({
 
   return (
     <div className="flex flex-wrap items-end gap-x-4 gap-y-3 rounded-lg border border-neutral-800 bg-neutral-950/60 px-3 py-3">
-      <FilterField label="검색 (관리번호/시리얼/모델/사용자)">
+      <FilterField label="관리번호">
         <input
-          value={filters.query}
-          onChange={(e) => set("query", e.target.value)}
+          value={filters.managementNo}
+          onChange={(e) => set("managementNo", e.target.value)}
           placeholder="예: AST-2026-0012"
           className={`${fieldCls} w-44`}
+        />
+      </FilterField>
+      <FilterField label="시리얼번호">
+        <input
+          value={filters.serialNo}
+          onChange={(e) => set("serialNo", e.target.value)}
+          placeholder="예: SN-0001"
+          className={`${fieldCls} w-36`}
+        />
+      </FilterField>
+      <FilterField label="사용자">
+        <input
+          value={filters.userName}
+          onChange={(e) => set("userName", e.target.value)}
+          placeholder="예: 홍길동"
+          className={`${fieldCls} w-28`}
         />
       </FilterField>
       <FilterField label="카테고리">
