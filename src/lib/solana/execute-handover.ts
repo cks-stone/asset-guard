@@ -7,18 +7,10 @@ import {
   Transaction,
   VersionedTransaction,
 } from "@solana/web3.js";
-import { getEnv } from "@/lib/config/env";
-import { findHandoverPda } from "@/lib/solana/pda";
 import { getConnection } from "@/lib/anchor/provider";
 import { getFeePayerKeypair, getFeePayerPublicKey } from "@/lib/solana/fee-payer";
 import idl from "@/lib/anchor/idl/asset_guard.json";
 import type { AssetGuard } from "@/lib/anchor/idl/asset_guard";
-
-function getProgramId(): PublicKey {
-  const id = getEnv().NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID;
-  if (!id) throw new Error("NEXT_PUBLIC_ASSET_GUARD_PROGRAM_ID 가 설정되어 있지 않습니다");
-  return new PublicKey(id);
-}
 
 // @coral-xyz/anchor 0.31 ESM 은 `anchor.Wallet` 을 내보내지 않으므로,
 // AnchorProvider 가 요구하는 최소 지갑 인터페이스만 키페어로 구현한다.
@@ -65,11 +57,9 @@ export async function executeCreateHandover(args: {
     provider,
   );
 
-  const { pda } = await findHandoverPda(getProgramId().toString(), args.assetId);
   const tx = await program.methods
     .createHandover(args.assetId, args.assetCode)
     .accounts({
-      handover: pda,
       from: new PublicKey(args.from),
       to: new PublicKey(args.to),
       feePayer: feePayerAddress,
@@ -205,11 +195,9 @@ async function executeBatchChunk(
   try {
     const tx = new Transaction();
     for (const item of chunk) {
-      const { pda } = await findHandoverPda(getProgramId().toString(), item.assetId);
       const ix = await program.methods
         .createHandover(item.assetId, item.assetCode)
         .accounts({
-          handover: pda,
           from: new PublicKey(item.from),
           to: new PublicKey(item.to),
           feePayer: feePayerAddress,

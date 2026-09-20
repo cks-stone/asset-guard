@@ -1,40 +1,27 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Keypair, PublicKey } from "@solana/web3.js";
-import { createHash } from "crypto";
 import { expect } from "chai";
 import type { AssetGuard } from "../src/lib/anchor/idl/asset_guard";
 
-describe("asset_guard — 인수인계 스마트컨트랙트", () => {
+describe("asset_guard — 인수인계 (무계정 이벤트 emit)", () => {
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
   const program = anchor.workspace.AssetGuard as Program<AssetGuard>;
 
   const from = Keypair.generate();
   const to = Keypair.generate();
-
   const assetId = "c2d9a30a-38d4-4f4e-9b0e-1a2b3c4d5e6f";
   const assetId2 = "d3e0b41b-49e5-5a5f-ae1f-2b3c4d5e6f70";
   const assetCode = "RCB-0001";
+  const feePayer = provider.wallet.publicKey;
 
-  const findPda = (aid: string, a: PublicKey, b: PublicKey) =>
-    PublicKey.findProgramAddress(
-      [
-        Buffer.from("handover"),
-        createHash("sha256").update(Buffer.from(aid)).digest(),
-        a.toBuffer(),
-        b.toBuffer(),
-      ],
-      program.programId,
-    );
-
-  const airdrop = async (pk: PublicKey) => {
-    const sig = await provider.connection.requestAirdrop(
-      pk,
-      2 * anchor.web3.LAMPORTS_PER_SOL,
-    );
-    await provider.connection.confirmTransaction(sig, "confirmed");
-  };
+  // 무계정 설계: 서명자는 서비스 지갑(fee_payer) 하나뿐. from/to 는 주소만 기록.
+  const callHandover = (aid: string, a: PublicKey, b: PublicKey) =>
+    program.methods
+      .createHandover(aid, assetCode)
+      .accounts({ from: a, to: b, feePayer })
+      .rpc();
 
   const expectReject = async (
     promise: Promise<unknown>,
@@ -50,156 +37,68 @@ describe("asset_guard — 인수인계 스마트컨트랙트", () => {
     }
   };
 
-  before(async () => {
-    await airdrop(from.publicKey);
-    await airdrop(to.publicKey);
-  });
+  const getParsedTransaction = async (sig: string) => {
+    await provider.connection.confirmTransaction(sig, "confirmed");
+    return provider.connection.getTransaction(sig, {
+      maxSupportedTransactionVersion: 0,
+      commitment: "confirmed",
+    });
+  };
 
-  describe("create_handover", () => {
-    it("PDA 초기화 + PENDING 상태 + 필드 값 검증", async () => {
-      const [hPda] = await findPda(assetId, from.publicKey, to.publicKey);
-      await program.methods
-        .createHandover(assetId, assetCode)
-        .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-        .signers([from])
-        .rpc();
+  describe("create_handover (이벤트 emit 전용)", () => {
+    it("성공 — 이벤트 로그 기록, 계정 미생성, 수수료=5,000 lamports", async () => {
+      const sig = await callHandover(assetId, from.publicKey, to.publicKey);
 
-      const acc = await program.account.handover.fetch(hPda);
-      expect(acc.assetId).to.eq(assetId);
-      expect(acc.assetCode).to.eq(assetCode);
-      expect(acc.from.toString()).to.eq(from.publicKey.toString());
-      expect(acc.to.toString()).to.eq(to.publicKey.toString());
-      expect(acc.status).to.deep.eq({ pending: {} });
-      expect(acc.createdTs.toNumber()).to.be.greaterThan(0);
-      expect(acc.completedTs.toNumber()).to.eq(0);
+      const tx = await getParsedTransaction(sig);
+      expect(tx).to.not.eq(null);
+      const meta = tx!.meta!;
+      const logs = meta.logMessages ?? [];
+
+      // 1) 이벤트가 트랜잭션 로그(불변 증거)에 남는다
+      expect(logs.some((l) => l.startsWith("Program data:"))).to.eq(true);
+
+      // 2) PDA 등 새로운 계정이 생성되지 않는다 (수수료 지갑 외 잔액 불변)
+      const post = meta.postBalances;
+      post.forEach((v, i) => {
+        if (i !== 0) expect(v).to.eq(meta.preBalances[i]);
+      });
+
+      // 3) 비용은 트랜잭션 수수료뿐 (렌트 예치 0)
+      expect(meta.fee).to.eq(5_000);
     });
 
-    it("동일 PDA 중복 생성 거부 (already in use)", async () => {
-      const [hPda] = await findPda(assetId, from.publicKey, to.publicKey);
-      await expectReject(
-        program.methods
-          .createHandover(assetId, assetCode)
-          .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-          .signers([from])
-          .rpc(),
-        /already in use|ALREADY_IN_USE|already initialized/i,
-      );
+    it("동일 자산 재이관 — 계정 생성 없이 수수료만 (반복 가능)", async () => {
+      const sig = await callHandover(assetId2, from.publicKey, to.publicKey);
+
+      const tx = await getParsedTransaction(sig);
+      const meta = tx!.meta!;
+      const pre = meta.preBalances;
+      const post = meta.postBalances;
+      post.forEach((v, i) => {
+        if (i !== 0) expect(v).to.eq(pre[i]);
+      });
+      expect(meta.fee).to.eq(5_000);
+
+      const sig2 = await callHandover(assetId2, to.publicKey, from.publicKey);
+      const tx2 = await getParsedTransaction(sig2);
+      const meta2 = tx2!.meta!;
+      meta2.postBalances.forEach((v, i) => {
+        if (i !== 0) expect(v).to.eq(meta2.preBalances[i]);
+      });
+      expect(meta2.fee).to.eq(5_000);
     });
 
     it("인계자 == 인수자 거부 (SameParty)", async () => {
-      const [hPda] = await findPda(
-        assetId2,
-        from.publicKey,
-        from.publicKey,
-      );
       await expectReject(
-        program.methods
-          .createHandover(assetId2, assetCode)
-          .accounts({ handover: hPda, from: from.publicKey, to: from.publicKey })
-          .signers([from])
-          .rpc(),
+        callHandover(assetId2, from.publicKey, from.publicKey),
         /same|같은 주소/i,
       );
     });
-  });
 
-  describe("accept_handover (양자 서명 필수)", () => {
-    it("인계자(from)만 서명 → 거부 (서명 검증 실패)", async () => {
-      const [hPda] = await findPda(assetId, from.publicKey, to.publicKey);
+    it("빈 asset_id 거부 (InvalidInput)", async () => {
       await expectReject(
-        program.methods
-          .acceptHandover()
-          .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-          .signers([from])
-          .rpc(),
-        /transaction has not been signed|signature/i,
-      );
-    });
-
-    it("인수자(to)만 서명 → 거부 (서명 검증 실패)", async () => {
-      const [hPda] = await findPda(assetId, from.publicKey, to.publicKey);
-      await expectReject(
-        program.methods
-          .acceptHandover()
-          .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-          .signers([to])
-          .rpc(),
-        /transaction has not been signed|signature/i,
-      );
-    });
-
-    it("from + to 양자 서명 → COMPLETED + completed_ts 기록", async () => {
-      const [hPda] = await findPda(assetId, from.publicKey, to.publicKey);
-      await program.methods
-        .acceptHandover()
-        .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-        .signers([from, to])
-        .rpc();
-
-      const acc = await program.account.handover.fetch(hPda);
-      expect(acc.status).to.deep.eq({ completed: {} });
-      expect(acc.completedTs.toNumber()).to.be.greaterThan(0);
-    });
-
-    it("COMPLETED 후 재수락 거부 (InvalidStatus)", async () => {
-      const [hPda] = await findPda(assetId, from.publicKey, to.publicKey);
-      await expectReject(
-        program.methods
-          .acceptHandover()
-          .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-          .signers([from, to])
-          .rpc(),
-        /PENDING 상태/i,
-      );
-    });
-  });
-
-  describe("cancel_handover", () => {
-    it("from 서명 → CANCELLED, 이후 accept 거부", async () => {
-      const [hPda] = await findPda(assetId2, from.publicKey, to.publicKey);
-      await airdrop(from.publicKey);
-      await program.methods
-        .createHandover(assetId2, assetCode)
-        .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-        .signers([from])
-        .rpc();
-
-      await program.methods
-        .cancelHandover()
-        .accounts({
-          handover: hPda,
-          from: from.publicKey,
-          to: to.publicKey,
-        })
-        .signers([from])
-        .rpc();
-
-      const acc = await program.account.handover.fetch(hPda);
-      expect(acc.status).to.deep.eq({ cancelled: {} });
-
-      await expectReject(
-        program.methods
-          .acceptHandover()
-          .accounts({ handover: hPda, from: from.publicKey, to: to.publicKey })
-          .signers([from, to])
-          .rpc(),
-        /PENDING 상태/i,
-      );
-    });
-
-    it("CANCELLED 상태 재취소 거부 (InvalidStatus)", async () => {
-      const [hPda] = await findPda(assetId2, from.publicKey, to.publicKey);
-      await expectReject(
-        program.methods
-          .cancelHandover()
-          .accounts({
-            handover: hPda,
-            from: from.publicKey,
-            to: to.publicKey,
-          })
-          .signers([from])
-          .rpc(),
-        /PENDING 상태/i,
+        callHandover("", from.publicKey, to.publicKey),
+        /empty|비어|64/i,
       );
     });
   });

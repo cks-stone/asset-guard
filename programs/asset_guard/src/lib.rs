@@ -2,86 +2,29 @@ use anchor_lang::prelude::*;
 
 declare_id!("5U6NZm5aNtzEeWEdzuZiciRbmFo8wLEzxBfcXnEjgkJ3");
 
-/// 인수인계 상태 (온체인 무결성 증거)
-#[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug, AnchorSerialize, AnchorDeserialize)]
-pub enum HandoverStatus {
-    Pending = 0,
-    Completed = 1,
-    Cancelled = 2,
-}
-
-impl Default for HandoverStatus {
-    fn default() -> Self {
-        HandoverStatus::Pending
-    }
-}
-
-/// 인수인계 이력 — Supabase(ad-hoc DB)와 달리 관리자도 위조/삭제 불가.
-/// 2026-09 단일 레코드 방식: PDA는 자산(asset_id) 단독 키로 1개만 두고,
-/// create_handover가 init_if_needed 로 재사용한다 (반복·왕복 이관 가능).
-/// 전체 이력(시간순)은 DB transfer_history가 보관하고, 온체인은 최신 사실을 증명한다.
-#[account]
-#[derive(Default)]
-pub struct Handover {
-    /// Supabase assets.id (uuid) — 온체인 ↔ DB 정합성 검증 키
-    pub asset_id: String,
-    /// 자산 코드 (예: "RCB-0001")
-    pub asset_code: String,
-    /// 기존 담당자 (지갑)
-    pub from: Pubkey,
-    /// 신규 담당자 (지갑)
-    pub to: Pubkey,
-    /// Pending / Completed / Cancelled
-    pub status: HandoverStatus,
-    /// create_handover 시각 (unix ts)
-    pub created_ts: i64,
-    /// accept_handover 시각 (unix ts)
-    pub completed_ts: i64,
-    pub bump: u8,
-}
-
-/// asset_id(uuid, 36자) → sha256 32바이트 시드 (PDA 시드 컴포넌트 최대 32바이트 제약 대응)
-#[inline]
-fn asset_seed(asset_id: &str) -> Vec<u8> {
-    anchor_lang::solana_program::hash::hash(asset_id.as_bytes())
-        .to_bytes()
-        .to_vec()
-}
-
-impl Handover {
-    pub const SPACE: usize = 8
-        + (4 + 64)  // asset_id
-        + (4 + 64)  // asset_code
-        + 32        // from
-        + 32        // to
-        + 1         // status
-        + 8         // created_ts
-        + 8         // completed_ts
-        + 1;        // bump
-}
-
+/// 인수인계 사실 증거 — 자산당 PDA 계정을 만들지 않고 이벤트 로그로만 기록한다.
+/// (구) PDA 계정: 자산당 렌트 면제 예치금(1,798,320 lamports)이 발생, mainnet에서
+/// 자산 수·이관 수만큼 잠금이 누적되는 구조였다.
+/// (신) 무계정(account-less) 설계:
+///   - On-chain 증거 = 트랜잭션 서명 + HandoverCreated 이벤트 로그 (탐색기에서 영구 조회).
+///   - 전체 이력(시간순)·담당자 동의 타임스탬프는 DB transfer_history가 보관.
+///   - 비용 = 트랜잭션 수수료(5,000 lamports)뿐, 렌트 예치 0.
 #[event]
 pub struct HandoverCreated {
-    pub handover: Pubkey,
     pub asset_id: String,
+    pub asset_code: String,
     pub from: Pubkey,
     pub to: Pubkey,
-}
-
-#[event]
-pub struct HandoverAccepted {
-    pub handover: Pubkey,
-    pub from: Pubkey,
-    pub to: Pubkey,
+    pub created_ts: i64,
 }
 
 #[program]
 pub mod asset_guard {
     use super::*;
 
-    /// 인계 신청 — 기존 담당자(from)만 서명, 상태 PENDING.
-    /// 신규 담당자(to)는 지갑 주소만 지정되며 아직 서명하지 않는다.
+    /// 이관 확정 — 관리자(서비스 지갑)가 승인 시점에 단독 실행.
+    /// from/to 주소를 이벤트로 남기는 것이 전부이고, 온체인 상태는 저장하지 않는다.
+    /// A·B 담당자의 동의는 DB 승인 기록(transfer_history 동반)으로 보존한다.
     pub fn create_handover(
         ctx: Context<CreateHandover>,
         asset_id: String,
@@ -97,109 +40,26 @@ pub mod asset_guard {
             ErrorCode::SameParty
         );
 
-        let handover = &mut ctx.accounts.handover;
-        handover.asset_id = asset_id;
-        handover.asset_code = asset_code;
-        handover.from = ctx.accounts.from.key();
-        handover.to = ctx.accounts.to.key();
-        handover.status = HandoverStatus::Pending;
-        handover.completed_ts = 0;
-        handover.created_ts = Clock::get()?.unix_timestamp;
-        handover.bump = ctx.bumps.handover;
-
         emit!(HandoverCreated {
-            handover: handover.key(),
-            asset_id: handover.asset_id.clone(),
-            from: handover.from,
-            to: handover.to,
+            asset_id: asset_id.clone(),
+            asset_code: asset_code.clone(),
+            from: ctx.accounts.from.key(),
+            to: ctx.accounts.to.key(),
+            created_ts: Clock::get()?.unix_timestamp,
         });
-        Ok(())
-    }
-
-    /// 인수 수락 — 인계자(from)와 인수자(to)가 모두 서명해야만 실제 계약이 진행된다.
-    /// (양자 서명 필수: 스펙 "인계자가 먼저 요청, 인수자가 수락해야 계약 진행")
-    pub fn accept_handover(ctx: Context<AcceptHandover>) -> Result<()> {
-        let handover = &mut ctx.accounts.handover;
-        require!(
-            handover.status == HandoverStatus::Pending,
-            ErrorCode::InvalidStatus
-        );
-        handover.status = HandoverStatus::Completed;
-        handover.completed_ts = Clock::get()?.unix_timestamp;
-
-        emit!(HandoverAccepted {
-            handover: handover.key(),
-            from: handover.from,
-            to: handover.to,
-        });
-        Ok(())
-    }
-
-    /// 인계 취소 — 인계자(from)만 서명, PENDING 상태에서만 가능.
-    pub fn cancel_handover(ctx: Context<CancelHandover>) -> Result<()> {
-        let handover = &mut ctx.accounts.handover;
-        require!(
-            handover.status == HandoverStatus::Pending,
-            ErrorCode::InvalidStatus
-        );
-        handover.status = HandoverStatus::Cancelled;
         Ok(())
     }
 }
 
 #[derive(Accounts)]
-#[instruction(asset_id: String, asset_code: String)]
 pub struct CreateHandover<'info> {
-    /// PDA: handover_sha256(asset_id) — 자산당 1개, init_if_needed 로 재사용
-    #[account(
-        init_if_needed,
-        payer = fee_payer,
-        space = Handover::SPACE,
-        seeds = [b"handover".as_ref(), &asset_seed(&asset_id)],
-        bump
-    )]
-    pub handover: Account<'info, Handover>,
-    /// CHECK: 주소만 기록(온체인 서명은 없음).
-    /// 2026-09 흐름 재설계: 인수인계는 관리자(시스템/서비스 지갑)가 승인 시점에
-    /// 단독으로 실행한다. A(기존 담당자)·B(신규 담당자)의 동의는 DB 승인 기록으로
-    /// 보존하며, 이 계정 주소는 그 때 DB에 기록된 실제 담당자 주소가 들어온다.
-    #[account(mut)]
+    /// CHECK: 기존 담당자 지갑 — 온체인 서명 없음, 이벤트 기록용 주소.
     pub from: AccountInfo<'info>,
-    /// CHECK:: 신규 담당자 — 수신 승인 기록 대상.
+    /// CHECK: 신규 담당자 지갑.
     pub to: AccountInfo<'info>,
-    /// 시스템 관리자(운영 서비스 지갑) — PDA 렌트비 + 트랜잭션 수수료 지불.
-    /// 서버가 보관한 키만 이 계정으로 서명한다.
+    /// 시스템 운영 지갑 — 트랜잭션 수수료 부담. 서버가 보관한 키만 이 계정으로 서명한다.
     #[account(mut)]
     pub fee_payer: Signer<'info>,
-    pub system_program: Program<'info, System>,
-}
-
-#[derive(Accounts)]
-pub struct AcceptHandover<'info> {
-    #[account(
-        mut,
-        seeds = [b"handover".as_ref(), &asset_seed(&handover.asset_id)],
-        bump = handover.bump
-    )]
-    pub handover: Account<'info, Handover>,
-    #[account(address = handover.from)]
-    pub from: Signer<'info>,
-    #[account(address = handover.to)]
-    pub to: Signer<'info>,
-}
-
-#[derive(Accounts)]
-pub struct CancelHandover<'info> {
-    #[account(
-        mut,
-        seeds = [b"handover".as_ref(), &asset_seed(&handover.asset_id)],
-        bump = handover.bump
-    )]
-    pub handover: Account<'info, Handover>,
-    #[account(address = handover.from)]
-    pub from: Signer<'info>,
-    /// CHECK:: 신규 담당자 — 서명 불필요, address=handover.to 검증 없음.
-    pub to: AccountInfo<'info>,
 }
 
 #[error_code]
@@ -208,6 +68,4 @@ pub enum ErrorCode {
     InvalidInput,
     #[msg("인계자와 인수자는 같은 주소일 수 없습니다")]
     SameParty,
-    #[msg("PENDING 상태에서만 실행 가능합니다")]
-    InvalidStatus,
 }
