@@ -43,6 +43,9 @@ export function AdminConsole() {
   const prevAssetsRef = useRef<RentalAssetRow[]>([]);
   const [flashNos, setFlashNos] = useState<ReadonlySet<string>>(new Set());
   const flashTimersRef = useRef<Map<string, number>>(new Map());
+  // 필터가 바뀌어 재조회하는 경우 diff(깜빡임)를 건너뛴다 —
+  // 검색/필터 입력 때마다 목록 전체가 깜빡이는 것을 막는다.
+  const lastFilterKeyRef = useRef("");
 
   // 실제 변경된 행만 5초간 하이라이트 — dashboard와 동일한 diff 배선.
   const applyDiff = useCallback((prev: RentalAssetRow[], next: RentalAssetRow[]) => {
@@ -111,13 +114,15 @@ export function AdminConsole() {
       };
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       const next = json.data ?? [];
-      // 첫 로드(빈 prev)에서만 diff를 건너뛴다 — 목록 전체가 깜빡이는 것을 막는다.
-      // 그 이후 자동 재조회(폴링·포커스·가시성 복귀 = quiet)에서도 applyDiff를 실행해,
-      // 타인의 액션(이전요청·인수 승인 등)으로 목록이 바뀌면 변경된 행만 깜빡인다.
-      if (prevAssetsRef.current.length > 0) {
+      const filterKey = JSON.stringify(filters);
+      const filterChanged = filterKey !== lastFilterKeyRef.current;
+      // 필터나 첫 로드로 인한 재조회는 diff를 건너뛰어 목록 전체가 깜빡이는 것을 막는다.
+      // 같은 필터로 재조회(폴링·포커스)할 때만 applyDiff로 실제 변경된 행을 깜빡인다.
+      if (!filterChanged && prevAssetsRef.current.length > 0) {
         applyDiff(prevAssetsRef.current, next);
       }
       prevAssetsRef.current = next;
+      lastFilterKeyRef.current = filterKey;
       setAssets(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "목록 조회 실패");
@@ -343,7 +348,7 @@ export function AdminConsole() {
 
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">렌탈 자산 관리 ({assets.length})</h2>
+          <h2 className="text-lg font-semibold">관리자 렌탈 자산 관리 ({assets.length})</h2>
         </div>
         <div className="mt-4">
           <AssetFilterBar filters={filters} onChange={setFilters} />
