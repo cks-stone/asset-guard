@@ -141,14 +141,14 @@ export function WalletStatus() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-30 mt-2 w-80 rounded-xl border border-neutral-700 bg-neutral-900 p-4 shadow-xl">
+        <div className="absolute right-0 z-30 mt-2 w-[26rem] rounded-xl border border-neutral-700 bg-neutral-900 p-4 shadow-xl">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold">지갑 정보</p>
             <button
               onClick={() => void disconnect()}
               className="rounded bg-red-600/80 px-2 py-1 text-xs text-white hover:bg-red-500"
             >
-              해제
+              로그아웃
             </button>
           </div>
 
