@@ -135,7 +135,6 @@ export type RentalAssetUpdate = Partial<
 
 export interface EmployeeProfileRow {
   user_name: string;
-  wallet_address: string | null;
   employment_status: EmploymentStatus;
   work_location: WorkLocation;
   job_title: string | null;

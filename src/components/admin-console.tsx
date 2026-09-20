@@ -810,7 +810,7 @@ export function AdminConsole() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") void fetchHr(hrQ);
               }}
-              placeholder="이름/부문/팀/지갑 검색"
+              placeholder="이름/부문/팀 검색"
               className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
             />
             <button
@@ -850,7 +850,6 @@ export function AdminConsole() {
                 <th className="px-3 py-2 text-left font-medium">이름</th>
                 <th className="px-3 py-2 text-left font-medium">출처</th>
                 <th className="px-3 py-2 text-left font-medium">부문/팀</th>
-                <th className="px-3 py-2 text-left font-medium">지갑</th>
                 <th className="px-3 py-2 text-left font-medium">인사상태</th>
                 <th className="px-3 py-2 text-left font-medium">근무위치</th>
                 <th className="px-3 py-2 text-left font-medium">직급</th>
@@ -866,23 +865,10 @@ export function AdminConsole() {
                 const saving = hrBusy === p.user_name;
                 return (
                   <tr key={p.user_name} className="border-b border-neutral-800/70 align-middle">
-                    <td className="px-3 py-2 text-sm font-medium">
-                      {p.user_name}
-                      {p.wallet_address === null && (
-                        <span className="ml-1 align-middle text-[10px] text-neutral-500">
-                          (지갑 미연결)
-                        </span>
-                      )}
-                    </td>
+                    <td className="px-3 py-2 text-sm font-medium">{p.user_name}</td>
                     <td className="px-3 py-2">
                       {p.source ? (
-                        <span
-                          className={`rounded px-2 py-0.5 text-[10px] whitespace-nowrap ${
-                            p.source === "렌탈리스트"
-                              ? "bg-sky-500/15 text-sky-300"
-                              : "bg-violet-500/15 text-violet-300"
-                          }`}
-                        >
+                        <span className="rounded bg-sky-500/15 px-2 py-0.5 text-[10px] text-sky-300 whitespace-nowrap">
                           {p.source} 인수 대기
                         </span>
                       ) : (
@@ -893,9 +879,6 @@ export function AdminConsole() {
                     </td>
                     <td className="px-3 py-2 text-xs text-neutral-300">
                       {[p.division, p.department].filter(Boolean).join(" / ") || "—"}
-                    </td>
-                    <td className="px-3 py-2 font-mono text-[10px] text-neutral-500">
-                      {p.wallet_address ? shortAddr(p.wallet_address) : "—"}
                     </td>
                     <td className="px-3 py-2">
                       <select
@@ -992,7 +975,7 @@ export function AdminConsole() {
               })}
               {!hrList.length && (
                 <tr>
-                  <td colSpan={11} className="px-3 py-4 text-center text-sm text-neutral-500">
+                  <td colSpan={10} className="px-3 py-4 text-center text-sm text-neutral-500">
                     인사 프로필이 없습니다. 위 입력란에 사용자 이름을 넣고 등록해 주세요.
                   </td>
                 </tr>

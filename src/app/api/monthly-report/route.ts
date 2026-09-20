@@ -89,18 +89,13 @@ export async function GET(req: NextRequest) {
         supabase
           .from("employee_profiles")
           .select(
-            "user_name, wallet_address, employment_status, work_location, job_title, hire_date, departure_date",
+            "user_name, employment_status, work_location, job_title, hire_date, departure_date",
           ),
       ]);
 
-    // 인사 프로필 매칭 — 1순위 user_name(렌탈리스트 사용자명), 2순위 managed_by 지갑
+    // 인사 프로필 매칭 — rental_assets.user_name(== employee_profiles.user_name)으로만 매칭
     const profileByUser = new Map(
       (profiles ?? []).map((p) => [p.user_name?.trim().toLowerCase(), p]),
-    );
-    const profileByWallet = new Map(
-      (profiles ?? []).flatMap((p) =>
-        p.wallet_address ? [[p.wallet_address.toLowerCase(), p] as const] : [],
-      ),
     );
 
     const confirmItems: MonthlyConfirmItem[] = [];
@@ -108,13 +103,8 @@ export async function GET(req: NextRequest) {
 
     const rows = (assets ?? []) as unknown as RentalAssetRow[];
     for (const a of rows) {
-      // 인사 프로필 매칭 — 1순위 user_name(렌탈리스트 사용자명), 2순위 managed_by 지갑
       const nameKey = a.user_name?.trim().toLowerCase() ?? "";
-      const profile =
-        (nameKey ? profileByUser.get(nameKey) : undefined) ??
-        (a.managed_by
-          ? profileByWallet.get(a.managed_by.toLowerCase())
-          : undefined);
+      const profile = nameKey ? profileByUser.get(nameKey) : undefined;
 
       if (a.status !== "계약종료") {
         if (profile) {
