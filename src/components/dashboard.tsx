@@ -190,7 +190,7 @@ export function Dashboard() {
   if (isAdmin) tabs.push({ key: "admin", label: "관리자 렌탈 자산 관리" });
 
   return (
-    <div className="w-full max-w-[1600px] space-y-6">
+    <div className="w-full max-w-[2000px] space-y-6">
       {error && (
         <p className="rounded bg-red-950/60 px-4 py-2 text-sm text-red-300">{error}</p>
       )}

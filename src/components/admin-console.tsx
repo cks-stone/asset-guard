@@ -392,8 +392,8 @@ export function AdminConsole() {
             </span>
           </div>
         )}
-        <div className="mt-4">
-          <table className="w-full border-collapse text-left text-sm">
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[1600px] border-collapse whitespace-nowrap text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">선택</th>

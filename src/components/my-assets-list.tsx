@@ -418,8 +418,8 @@ export function MyAssetsList() {
         {!loading && visibleAssets.length === 0 && (
           <p className="mt-3 text-sm text-neutral-500">관리 중인 자산이 없습니다.</p>
         )}
-        <div className="mt-4">
-          <table className="w-full border-collapse text-left text-sm">
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[1220px] whitespace-nowrap border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">관리번호</th>
@@ -570,7 +570,7 @@ export function MyAssetsList() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap items-center gap-1">
+                      <div className="flex flex-nowrap items-center gap-1 whitespace-nowrap">
                         {a.pending_rejected_at && (
                           <span className="rounded bg-red-500/15 px-2 py-0.5 text-xs text-red-300">
                             이전 요청 거절됨
