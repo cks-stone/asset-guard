@@ -4,10 +4,14 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { WalletDirectoryPicker } from "@/components/wallet-directory-picker";
 import { AdminConsole } from "@/components/admin-console";
+import { AssetFilterBar } from "@/components/asset-filter-bar";
 import { useWallet } from "@/lib/wallet/wallet-context";
 import { BillingCalendar, buildYearPayments } from "@/components/billing-calendar";
 import { isValidSolanaAddress } from "@/lib/admin";
 import { RENTAL_ASSET_CATEGORIES } from "@/lib/supabase/types";
+import { EMPTY_FILTERS } from "@/lib/supabase/asset-filters";
+import { filtersToSearchParams } from "@/lib/supabase/asset-filters";
+import type { AssetFilters } from "@/lib/supabase/asset-filters";
 import type {
   BillingCycle,
   RentalAssetRow,
@@ -58,11 +62,9 @@ export function Dashboard() {
   const { publicKey, connected, connecting, connect } = useWallet();
 
   const [assets, setAssets] = useState<RentalAssetRow[]>([]);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-  const [idleCategoryFilter, setIdleCategoryFilter] = useState("");
-  const [query, setQuery] = useState("");
+  const [assetFilters, setAssetFilters] = useState<AssetFilters>(EMPTY_FILTERS);
   const [loading, setLoading] = useState(false);
+  const [idleLoading, setIdleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -119,7 +121,6 @@ export function Dashboard() {
   const [incomingLoading, setIncomingLoading] = useState(false);
   // 전사 유휴 자산 (모든 로그인 사용자에게 공개)
   const [idleAssets, setIdleAssets] = useState<RentalAssetRow[]>([]);
-  const [idleLoading, setIdleLoading] = useState(false);
 
   // 렌탈 목록에 표시할 행: 내 담당(managed_by) 자산 + 내게 이전 요청이 온 인입 자산.
   // 인입 자산은 목록에서 바로 인수 승인/거절을 처리할 수 있도록 함께 노출.
@@ -224,10 +225,10 @@ export function Dashboard() {
     if (!quiet) setLoading(true);
     setError(null);
     try {
-      const url = new URL("/api/rental-assets", window.location.origin);
-      if (statusFilter) url.searchParams.set("status", statusFilter);
-      if (categoryFilter) url.searchParams.set("category", categoryFilter);
-      if (query.trim()) url.searchParams.set("q", query.trim());
+const url = new URL("/api/rental-assets", window.location.origin);
+      for (const [k, v] of filtersToSearchParams(assetFilters)) {
+        url.searchParams.set(k, v);
+      }
       const res = await fetch(url, {
         headers: { "x-wallet": publicKey },
       });
@@ -247,10 +248,8 @@ export function Dashboard() {
       setAssets(next);
     } catch (err) {
       setError(err instanceof Error ? err.message : "목록 조회 실패");
-    } finally {
-      setLoading(false);
     }
-  }, [publicKey, statusFilter, categoryFilter, query]);
+  }, [publicKey, assetFilters]);
 
   useEffect(() => {
     void refresh();
@@ -267,8 +266,9 @@ export function Dashboard() {
     if (!quiet) setIdleLoading(true);
     try {
       const url = new URL("/api/rental-assets?idle=1", window.location.origin);
-      if (idleCategoryFilter)
-        url.searchParams.set("category", idleCategoryFilter);
+      for (const [k, v] of filtersToSearchParams(assetFilters)) {
+        url.searchParams.set(k, v);
+      }
       const res = await fetch(url, {
         headers: { "x-wallet": publicKey },
       });
@@ -279,7 +279,7 @@ export function Dashboard() {
     } finally {
       setIdleLoading(false);
     }
-  }, [publicKey, idleCategoryFilter]);
+  }, [publicKey, assetFilters]);
 
   useEffect(() => {
     if (publicKey) void refreshIdle();
@@ -527,8 +527,6 @@ export function Dashboard() {
           <h2 className="text-lg font-semibold">
             내가 관리하고 있는 자산 목록 ({visibleAssets.length})
           </h2>
-        </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <button
             type="button"
             onClick={() => {
@@ -539,36 +537,9 @@ export function Dashboard() {
           >
             + 자산등록
           </button>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="관리번호/시리얼/모델/사용자 검색"
-              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
-            />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
-            >
-              <option value="">전체 상태</option>
-              <option value="정상사용">정상사용</option>
-              <option value="유휴">유휴</option>
-              <option value="계약종료">계약종료</option>
-            </select>
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
-            >
-              <option value="">전체 카테고리</option>
-              {RENTAL_ASSET_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+        </div>
+        <div className="mt-4">
+          <AssetFilterBar filters={assetFilters} onChange={setAssetFilters} />
         </div>
         {loading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}
         {!loading && visibleAssets.length === 0 && (
@@ -766,18 +737,6 @@ export function Dashboard() {
             <span className="text-xs text-neutral-500">
               로그인한 모든 사용자가 회사 전체 유휴 자산을 볼 수 있습니다.
             </span>
-            <select
-              value={idleCategoryFilter}
-              onChange={(e) => setIdleCategoryFilter(e.target.value)}
-              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
-            >
-              <option value="">전체 카테고리</option>
-              {RENTAL_ASSET_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
         {idleLoading && <p className="mt-3 text-xs text-neutral-500">불러오는 중...</p>}

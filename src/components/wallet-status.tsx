@@ -16,8 +16,6 @@ export function WalletStatus() {
   const { user } = usePrivy();
   const [open, setOpen_] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [sol, setSol] = useState<number | null>(null);
-  const [balanceLoading, setBalanceLoading] = useState(false);
   const [adminWallets, setAdminWallets] = useState<string[]>([]);
   const [feePayerAddress, setFeePayerAddress] = useState<string | null>(null);
   const [feePayerSol, setFeePayerSol] = useState<number | null>(null);
@@ -46,33 +44,6 @@ export function WalletStatus() {
       cancelled = true;
     };
   }, [connected]);
-
-  useEffect(() => {
-    if (!connected || !publicKey) {
-      setSol(null);
-      return;
-    }
-    let cancelled = false;
-    const fetchBalance = async () => {
-      setBalanceLoading(true);
-      try {
-        const res = await fetch(`/api/wallet-balance?address=${publicKey}`, {
-          headers: { "x-wallet": publicKey },
-        });
-        if (!res.ok) throw new Error("balance fetch failed");
-        const json = (await res.json()) as { sol: number };
-        if (!cancelled) setSol(json.sol);
-      } catch {
-        if (!cancelled) setSol(null);
-      } finally {
-        if (!cancelled) setBalanceLoading(false);
-      }
-    };
-    void fetchBalance();
-    return () => {
-      cancelled = true;
-    };
-  }, [connected, publicKey]);
 
   useEffect(() => {
     if (!isAdmin || !publicKey || !feePayerAddress) {
@@ -143,7 +114,7 @@ export function WalletStatus() {
       {open && (
         <div className="absolute right-0 z-30 mt-2 w-[26rem] rounded-xl border border-neutral-700 bg-neutral-900 p-4 shadow-xl">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold">지갑 정보</p>
+            <p className="text-sm font-semibold">내 프로필</p>
             <button
               onClick={() => void disconnect()}
               className="rounded bg-red-600/80 px-2 py-1 text-xs text-white hover:bg-red-500"
@@ -157,18 +128,6 @@ export function WalletStatus() {
               <dt className="text-neutral-500">네트워크</dt>
               <dd className="font-mono text-neutral-200">
                 Solana {isSolanaMainnet() ? "Mainnet" : "Devnet"}
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-2">
-              <dt className="text-neutral-500">SOL 잔액</dt>
-              <dd className="font-mono text-neutral-200">
-                {balanceLoading ? (
-                  <span className="text-neutral-500">조회 중...</span>
-                ) : sol !== null ? (
-                  `${sol.toLocaleString("ko-KR", { maximumFractionDigits: 6 })} SOL`
-                ) : (
-                  <span className="text-neutral-500">—</span>
-                )}
               </dd>
             </div>
             {isAdmin && feePayerAddress && (

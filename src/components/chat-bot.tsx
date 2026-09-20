@@ -73,7 +73,7 @@ export function ChatBot() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex w-[min(360px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl shadow-black/50">
+    <div className="fixed bottom-5 right-5 z-50 flex w-[min(540px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl shadow-black/50">
       <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-4 py-3">
         <div className="flex items-center gap-2">
           <span className="flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-white">

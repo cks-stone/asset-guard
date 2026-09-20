@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@/lib/wallet/wallet-context";
 import { isSolanaMainnet } from "@/lib/config/env";
+import { AssetFilterBar } from "@/components/asset-filter-bar";
 import { RENTAL_ASSET_CATEGORIES } from "@/lib/supabase/types";
+import { EMPTY_FILTERS } from "@/lib/supabase/asset-filters";
+import { filtersToSearchParams } from "@/lib/supabase/asset-filters";
+import type { AssetFilters } from "@/lib/supabase/asset-filters";
 import type { RentalAssetRow } from "@/lib/supabase/types";
 
 async function readJson(res: Response): Promise<{ error?: string; [k: string]: unknown }> {
@@ -28,8 +32,7 @@ export function AdminConsole() {
   const { publicKey, connected, connect } = useWallet();
   const [adminWallets, setAdminWallets] = useState<string[]>([]);
   const [assets, setAssets] = useState<RentalAssetRow[]>([]);
-  const [query, setQuery] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [filters, setFilters] = useState<AssetFilters>(EMPTY_FILTERS);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -96,8 +99,9 @@ export function AdminConsole() {
     try {
       const url = new URL("/api/rental-assets", window.location.origin);
       url.searchParams.set("all", "1");
-      if (categoryFilter) url.searchParams.set("category", categoryFilter);
-      if (query.trim()) url.searchParams.set("q", query.trim());
+      for (const [k, v] of filtersToSearchParams(filters)) {
+        url.searchParams.set(k, v);
+      }
       const res = await fetch(url, {
         headers: { "x-admin-wallet": publicKey },
       });
@@ -118,7 +122,7 @@ export function AdminConsole() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "목록 조회 실패");
     }
-  }, [isAdmin, publicKey, query, categoryFilter]);
+  }, [isAdmin, publicKey, filters]);
 
   useEffect(() => {
     if (isAdmin) void refresh();
@@ -340,26 +344,9 @@ export function AdminConsole() {
       <section className="rounded-xl border border-neutral-800 bg-neutral-900 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold">렌탈 자산 관리 ({assets.length})</h2>
-          <div className="flex items-center gap-2">
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="관리번호/모델/사용자 검색"
-              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
-            />
-            <select
-              value={categoryFilter}
-              onChange={(e) => setCategoryFilter(e.target.value)}
-              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
-            >
-              <option value="">전체 카테고리</option>
-              {RENTAL_ASSET_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
+        </div>
+        <div className="mt-4">
+          <AssetFilterBar filters={filters} onChange={setFilters} />
         </div>
         {selectable.length > 0 && (
           <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2">

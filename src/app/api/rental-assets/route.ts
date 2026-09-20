@@ -55,6 +55,18 @@ export async function GET(req: NextRequest) {
     const statusParam = searchParams.get("status") as RentalAssetStatus | null;
     const categoryParam = searchParams.get("category");
     const q = searchParams.get("q");
+    const modelParam = searchParams.get("model");
+    const manufacturerParam = searchParams.get("manufacturer");
+    const divisionParam = searchParams.get("division");
+    const departmentParam = searchParams.get("department");
+    const rentalCompanyParam = searchParams.get("rental_company");
+    const billingCycleParam = searchParams.get("billing_cycle");
+    const feeMinParam = searchParams.get("fee_min");
+    const feeMaxParam = searchParams.get("fee_max");
+    const startFromParam = searchParams.get("start_from");
+    const startToParam = searchParams.get("start_to");
+    const endFromParam = searchParams.get("end_from");
+    const endToParam = searchParams.get("end_to");
     // all=1 (관리자 전용): 전체 조회. 기본: 본인 담당(managed_by) 행만 조회.
     const all = searchParams.get("all") === "1";
     // incoming=1: 내게 온 '수신 대기'(pending_to_wallet = 내 지갑) 조회
@@ -106,6 +118,32 @@ export async function GET(req: NextRequest) {
         `management_no.ilike.${pattern},serial_no.ilike.${pattern},model_name.ilike.${pattern},user_name.ilike.${pattern},manufacturer.ilike.${pattern}`,
       );
     }
+    const textFilter = (field: string, value: string | null) => {
+      if (value && value.trim()) query = query.ilike(field, `%${value.trim()}%`);
+    };
+    textFilter("model_name", modelParam);
+    textFilter("manufacturer", manufacturerParam);
+    textFilter("division", divisionParam);
+    textFilter("department", departmentParam);
+    textFilter("rental_company", rentalCompanyParam);
+
+    if (billingCycleParam) {
+      const cycle = billingCycleParam.trim();
+      if (cycle && BILLING_CYCLES.includes(cycle as (typeof BILLING_CYCLES)[number])) {
+        query = query.eq("billing_cycle", cycle);
+      }
+    }
+    const rangeFilter = (field: string, from: string | null, to: string | null, numeric: boolean) => {
+      const f = from && from.trim() ? from.trim() : null;
+      const t = to && to.trim() ? to.trim() : null;
+      if (numeric && f !== null && Number.isNaN(Number(f))) return;
+      if (numeric && t !== null && Number.isNaN(Number(t))) return;
+      if (f !== null) query = query.gte(field, numeric ? Number(f) : f);
+      if (t !== null) query = query.lte(field, numeric ? Number(t) : t);
+    };
+    rangeFilter("rental_fee", feeMinParam, feeMaxParam, true);
+    rangeFilter("rental_start_date", startFromParam, startToParam, false);
+    rangeFilter("rental_end_date", endFromParam, endToParam, false);
 
     const { data, error } = await query;
     if (error) return errorResponse(error.message, 500);
