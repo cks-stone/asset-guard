@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { AppProviders } from "@/components/app-providers";
+import { ChatBot } from "@/components/chat-bot";
 import "./globals.css";
 import "@xyflow/react/dist/style.css";
 
@@ -15,6 +16,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="ko">
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
         <AppProviders>{children}</AppProviders>
+        <ChatBot />
       </body>
     </html>
   );
