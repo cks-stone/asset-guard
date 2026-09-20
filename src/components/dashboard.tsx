@@ -6,6 +6,7 @@ import { MyAssetsList } from "@/components/my-assets-list";
 import { IdleAssetsList } from "@/components/idle-assets-list";
 import { useWallet } from "@/lib/wallet/wallet-context";
 import { BillingCalendar, buildYearPayments } from "@/components/billing-calendar";
+import { MonthlyReport } from "@/components/monthly-report";
 import type { RentalAssetRow, RentalAssetStatus } from "@/lib/supabase/types";
 
 async function readJson(res: Response): Promise<{ error?: string; [k: string]: unknown }> {
@@ -227,6 +228,7 @@ export function Dashboard() {
                 ))}
               </section>
               <BillingCalendar assets={summaryAssets} />
+              <MonthlyReport />
             </>
           )}
           {tab === "my" && <MyAssetsList />}

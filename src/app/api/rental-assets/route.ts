@@ -22,6 +22,7 @@ const insertRentalAssetSchema = z
     user_name: z.string().trim().max(64).nullable().optional(),
     division: z.string().trim().max(64).nullable().optional(),
     department: z.string().trim().max(64).nullable().optional(),
+    location: z.string().trim().max(128).nullable().optional(),
     rental_company: z.string().trim().max(64).nullable().optional(),
     billing_cycle: z.enum(BILLING_CYCLES).nullable().optional(),
     rental_fee: z.number().int().min(0).nullable().optional(),

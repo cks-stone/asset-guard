@@ -2,6 +2,22 @@
 
 export type RentalAssetStatus = "정상사용" | "유휴" | "계약종료";
 export type BillingCycle = "월납" | "연납" | "반기납" | "일시납";
+
+// M38 — 인사(HR) 프로필 값 (supabase/migrations/0014_employee_profiles_asset_location.sql)
+export const EMPLOYMENT_STATUSES = [
+  "재직",
+  "수습",
+  "휴직",
+  "출산휴가",
+  "육아휴직",
+  "파견",
+  "퇴직",
+  "기타",
+] as const;
+export type EmploymentStatus = (typeof EMPLOYMENT_STATUSES)[number];
+
+export const WORK_LOCATIONS = ["본사", "지사", "재택", "해외지사", "출장중"] as const;
+export type WorkLocation = (typeof WORK_LOCATIONS)[number];
 export type RentalAssetCategory =
   | "모니터"
   | "노트북"
@@ -57,6 +73,7 @@ export interface RentalAssetRow {
   user_name: string | null;
   division: string | null;
   department: string | null;
+  location: string | null;
   rental_company: string | null;
   billing_cycle: BillingCycle | null;
   rental_fee: number | null;
@@ -116,6 +133,57 @@ export type RentalAssetUpdate = Partial<
   >
 >;
 
+export interface EmployeeProfileRow {
+  wallet_address: string;
+  employment_status: EmploymentStatus;
+  work_location: WorkLocation;
+  job_title: string | null;
+  hire_date: string | null;
+  departure_date: string | null;
+  note: string | null;
+  updated_at: string;
+}
+
+// 월간 리포팅 — 인사·근무 기준 "확인 필요 자산"
+export interface MonthlyConfirmItem {
+  management_no: string;
+  model_name: string;
+  category: string | null;
+  user_name: string | null;
+  division: string | null;
+  department: string | null;
+  location: string | null;
+  status: RentalAssetStatus;
+  employer: string | null; // wallet_labels.label (이름)
+  employment_status: EmploymentStatus | null;
+  work_location: WorkLocation | null;
+  job_title: string | null;
+  hire_date: string | null;
+  departure_date: string | null;
+  reason: string;
+  action: string;
+}
+
+// 월간 리포팅 — 만기(계약 종료) 도래 자산
+export interface MonthlyExpiringItem {
+  management_no: string;
+  model_name: string;
+  category: string | null;
+  user_name: string | null;
+  division: string | null;
+  department: string | null;
+  location: string | null;
+  rental_end_date: string;
+  days_left: number;
+  action: string;
+}
+
+export interface MonthlyReportData {
+  month: string; // YYYY-MM
+  confirmItems: MonthlyConfirmItem[];
+  expiringItems: MonthlyExpiringItem[];
+}
+
 // supabase-js createClient<Database> 제네릭용 맵
 export interface Database {
   public: {
@@ -124,6 +192,15 @@ export interface Database {
         Row: RentalAssetRow;
         Insert: RentalAssetInsert;
         Update: RentalAssetUpdate;
+        Relationships: [];
+      };
+      employee_profiles: {
+        Row: EmployeeProfileRow;
+        Insert: Partial<EmployeeProfileRow> &
+          Pick<EmployeeProfileRow, "wallet_address">;
+        Update: Partial<
+          Omit<EmployeeProfileRow, "wallet_address" | "updated_at">
+        >;
         Relationships: [];
       };
     };

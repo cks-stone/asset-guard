@@ -112,6 +112,7 @@ export function IdleAssetsList() {
                 <th className="px-3 py-2 font-medium">제조사</th>
                 <th className="px-3 py-2 font-medium">사용자</th>
                 <th className="px-3 py-2 font-medium">부문/팀</th>
+                <th className="px-3 py-2 font-medium">위치</th>
                 <th className="px-3 py-2 font-medium">렌탈사</th>
                 <th className="px-3 py-2 font-medium">청구</th>
                 <th className="px-3 py-2 font-medium">렌탈료</th>
@@ -157,6 +158,7 @@ export function IdleAssetsList() {
                     {a.department && <span>{a.department}</span>}
                     {!a.division && !a.department && "—"}
                   </td>
+                  <td className="px-3 py-2 text-xs">{a.location ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">{a.rental_company ?? "—"}</td>
                   <td className="px-3 py-2 text-xs">
                     {a.billing_cycle ?? "—"}

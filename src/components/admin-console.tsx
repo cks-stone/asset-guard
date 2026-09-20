@@ -6,6 +6,9 @@ import { useWallet } from "@/lib/wallet/wallet-context";
 import { isSolanaMainnet } from "@/lib/config/env";
 import { AssetFilterBar } from "@/components/asset-filter-bar";
 import { RENTAL_ASSET_CATEGORIES } from "@/lib/supabase/types";
+import { EMPLOYMENT_STATUSES, WORK_LOCATIONS } from "@/lib/supabase/types";
+import type { EmploymentStatus, WorkLocation } from "@/lib/supabase/types";
+import type { EmployeeProfileView } from "@/app/api/employees/route";
 import { EMPTY_FILTERS } from "@/lib/supabase/asset-filters";
 import { filtersToSearchParams } from "@/lib/supabase/asset-filters";
 import type { AssetFilters } from "@/lib/supabase/asset-filters";
@@ -28,6 +31,26 @@ const statusBadge: Record<string, string> = {
 const shortAddr = (addr: string | null | undefined) =>
   addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "—";
 
+interface HrDraft {
+  wallet_address: string;
+  employment_status: EmploymentStatus;
+  work_location: WorkLocation;
+  job_title: string;
+  hire_date: string;
+  departure_date: string;
+  note: string;
+}
+
+const emptyHrDraft = (wallet: string): HrDraft => ({
+  wallet_address: wallet,
+  employment_status: "재직",
+  work_location: "본사",
+  job_title: "",
+  hire_date: "",
+  departure_date: "",
+  note: "",
+});
+
 export function AdminConsole() {
   const { publicKey, connected, connect } = useWallet();
   const [adminWallets, setAdminWallets] = useState<string[]>([]);
@@ -38,6 +61,13 @@ export function AdminConsole() {
   const [busy, setBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+  // 인사 정보 관리(M38) — 지갑별 인사상태·근무위치 프로필
+  const [hrList, setHrList] = useState<EmployeeProfileView[]>([]);
+  const [hrDrafts, setHrDrafts] = useState<Record<string, HrDraft>>({});
+  const [hrQ, setHrQ] = useState("");
+  const [hrBusy, setHrBusy] = useState<string | null>(null);
+  const [hrNewWallet, setHrNewWallet] = useState("");
+  const hrQRef = useRef("");
   // 변경 감지용 이전 스냅샷 — 자동 재조회(폴링·포커스·가시성 복귀 = quiet)에서
   // diff를 건너뛰어 목록 전체가 깜빡이지 않게 한다. 깜빡임은 액션 직후 refresh()에서만.
   const prevAssetsRef = useRef<RentalAssetRow[]>([]);
@@ -133,6 +163,123 @@ export function AdminConsole() {
     if (isAdmin) void refresh();
   }, [isAdmin, refresh]);
 
+  const fetchHr = useCallback(
+    async (q?: string) => {
+      if (!isAdmin || !publicKey) return;
+      const query = (q ?? hrQRef.current).trim();
+      try {
+        const url = `/api/employees${query ? `?q=${encodeURIComponent(query)}` : ""}`;
+        const res = await fetch(url, { headers: { "x-admin-wallet": publicKey } });
+        const json = (await readJson(res)) as {
+          error?: string;
+          data?: EmployeeProfileView[];
+        };
+        if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+        const list = json.data ?? [];
+        setHrList(list);
+        setHrDrafts((prev) => {
+          const next = { ...prev };
+          for (const p of list) {
+            if (!next[p.wallet_address]) {
+              next[p.wallet_address] = {
+                ...emptyHrDraft(p.wallet_address),
+                employment_status: p.employment_status,
+                work_location: p.work_location,
+                job_title: p.job_title ?? "",
+                hire_date: p.hire_date ?? "",
+                departure_date: p.departure_date ?? "",
+                note: p.note ?? "",
+              };
+            }
+          }
+          return next;
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "인사 정보 조회 실패");
+      }
+    },
+    [isAdmin, publicKey],
+  );
+
+  useEffect(() => {
+    if (isAdmin) void fetchHr();
+  }, [isAdmin, fetchHr]);
+
+  const setHrDraft = (wallet: string, patch: Partial<HrDraft>) => {
+    setHrDrafts((prev) => ({
+      ...prev,
+      [wallet]: { ...(prev[wallet] ?? emptyHrDraft(wallet)), ...patch },
+    }));
+  };
+
+  const saveHr = async (wallet: string) => {
+    if (!isAdmin || !publicKey) return;
+    const d = hrDrafts[wallet];
+    if (!d) return;
+    setHrBusy(wallet);
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/employees", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-wallet": publicKey,
+        },
+        body: JSON.stringify({
+          wallet_address: d.wallet_address,
+          employment_status: d.employment_status,
+          work_location: d.work_location,
+          job_title: d.job_title || null,
+          hire_date: d.hire_date || null,
+          departure_date: d.departure_date || null,
+          note: d.note || null,
+        }),
+      });
+      const json = await readJson(res);
+      if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setNotice(`${shortAddr(wallet)} 인사 정보 저장 완료.`);
+      setHrNewWallet("");
+      void fetchHr();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "인사 정보 저장 실패");
+    } finally {
+      setHrBusy(null);
+    }
+  };
+
+  const registerHr = async () => {
+    if (!isAdmin || !publicKey) return;
+    const w = hrNewWallet.trim();
+    if (!w) return;
+    setHrBusy("__new__");
+    setError(null);
+    setNotice(null);
+    try {
+      const res = await fetch("/api/employees", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-admin-wallet": publicKey,
+        },
+        body: JSON.stringify({
+          wallet_address: w,
+          employment_status: "재직",
+          work_location: "본사",
+        }),
+      });
+      const json = await readJson(res);
+      if (!res.ok || json.error) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setNotice(`${shortAddr(w)} 인사 프로필 등록 완료.`);
+      setHrNewWallet("");
+      void fetchHr();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "인사 프로필 등록 실패");
+    } finally {
+      setHrBusy(null);
+    }
+  };
+
   // 탭/기기 복귀(포커스·가시성) 시와 10초 주기로 조용히 재조회 —
   // 다른 창/기기에서 이전·승인·거절이 발생해도 새로고침 없이 목록에 바로 반영.
   useEffect(() => {
@@ -167,6 +314,7 @@ export function AdminConsole() {
         | "user_name"
         | "division"
         | "department"
+        | "location"
         | "billing_cycle"
         | "rental_fee"
         | "billing_month"
@@ -403,6 +551,7 @@ export function AdminConsole() {
                 <th className="px-3 py-2 font-medium">사용자</th>
                 <th className="px-3 py-2 font-medium">부문</th>
                 <th className="px-3 py-2 font-medium">팀</th>
+                <th className="px-3 py-2 font-medium">위치</th>
                 <th className="px-3 py-2 font-medium">렌탈사</th>
                 <th className="px-3 py-2 font-medium">렌탈료</th>
                 <th className="px-3 py-2 font-medium">종료일</th>
@@ -507,6 +656,21 @@ export function AdminConsole() {
                         const v = e.target.value.trim();
                         if (v !== (a.department ?? "")) {
                           void handleUpdate(a, { department: v || null });
+                        }
+                      }}
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="text"
+                      defaultValue={a.location ?? ""}
+                      placeholder="—"
+                      disabled={busy === a.management_no}
+                      onBlur={(e) => {
+                        const v = e.target.value.trim();
+                        if (v !== (a.location ?? "")) {
+                          void handleUpdate(a, { location: v || null });
                         }
                       }}
                       className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
@@ -625,6 +789,194 @@ export function AdminConsole() {
         {!assets.length && (
           <p className="mt-3 text-sm text-neutral-500">등록된 렌탈 자산이 없습니다.</p>
         )}
+      </section>
+
+      <section className="mt-6 rounded-xl border border-neutral-800 bg-neutral-900 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
+          <h2 className="text-lg font-semibold">
+            인사 정보 관리 ({hrList.length})
+            <span className="ml-2 align-middle text-xs font-normal text-neutral-500">
+              월간 리포팅(퇴직·휴직·신규입사·재택·지사/출장, 만기 예고)의 판단 기준
+            </span>
+          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={hrQ}
+              onChange={(e) => {
+                setHrQ(e.target.value);
+                hrQRef.current = e.target.value;
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void fetchHr(hrQ);
+              }}
+              placeholder="이름/부문/팀/지갑 검색"
+              className="rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
+            />
+            <button
+              onClick={() => void fetchHr(hrQ)}
+              disabled={hrBusy !== null}
+              className="rounded bg-neutral-700 px-3 py-1.5 text-sm transition hover:bg-neutral-600 disabled:opacity-50"
+            >
+              검색
+            </button>
+          </div>
+        </div>
+
+        <div className="pb-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="text"
+              value={hrNewWallet}
+              disabled={hrBusy === "__new__"}
+              onChange={(e) => setHrNewWallet(e.target.value)}
+              placeholder="지갑 주소로 새 인사 프로필 등록"
+              className="min-w-[18rem] flex-1 rounded border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-sm"
+            />
+            <button
+              onClick={() => void registerHr()}
+              disabled={hrBusy === "__new__" || !hrNewWallet.trim()}
+              className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium transition hover:bg-emerald-500 disabled:opacity-50"
+            >
+              {hrBusy === "__new__" ? "등록 중…" : "등록"}
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-neutral-700 text-xs text-neutral-500">
+                <th className="px-3 py-2 text-left font-medium">이름</th>
+                <th className="px-3 py-2 text-left font-medium">부문/팀</th>
+                <th className="px-3 py-2 text-left font-medium">지갑</th>
+                <th className="px-3 py-2 text-left font-medium">인사상태</th>
+                <th className="px-3 py-2 text-left font-medium">근무위치</th>
+                <th className="px-3 py-2 text-left font-medium">직급</th>
+                <th className="px-3 py-2 text-left font-medium">입사일</th>
+                <th className="px-3 py-2 text-left font-medium">퇴직(예정)일</th>
+                <th className="px-3 py-2 text-left font-medium">비고</th>
+                <th className="px-3 py-2 text-left font-medium">저장</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hrList.map((p) => {
+                const d = hrDrafts[p.wallet_address] ?? emptyHrDraft(p.wallet_address);
+                const saving = hrBusy === p.wallet_address;
+                return (
+                  <tr key={p.wallet_address} className="border-b border-neutral-800/70 align-middle">
+                    <td className="px-3 py-2 text-sm font-medium">
+                      {p.label ?? <span className="text-neutral-600">(미등록 이름)</span>}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-neutral-300">
+                      {[p.division, p.department].filter(Boolean).join(" / ") || "—"}
+                    </td>
+                    <td className="px-3 py-2 font-mono text-[10px] text-neutral-500">
+                      {shortAddr(p.wallet_address)}
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={d.employment_status}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setHrDraft(p.wallet_address, {
+                            employment_status: e.target.value as EmploymentStatus,
+                          })
+                        }
+                        className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      >
+                        {EMPLOYMENT_STATUSES.map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <select
+                        value={d.work_location}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setHrDraft(p.wallet_address, {
+                            work_location: e.target.value as WorkLocation,
+                          })
+                        }
+                        className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      >
+                        {WORK_LOCATIONS.map((l) => (
+                          <option key={l} value={l}>
+                            {l}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="text"
+                        value={d.job_title}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setHrDraft(p.wallet_address, { job_title: e.target.value })
+                        }
+                        className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="date"
+                        value={d.hire_date}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setHrDraft(p.wallet_address, { hire_date: e.target.value })
+                        }
+                        className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="date"
+                        value={d.departure_date}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setHrDraft(p.wallet_address, { departure_date: e.target.value })
+                        }
+                        className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="text"
+                        value={d.note}
+                        disabled={saving}
+                        onChange={(e) =>
+                          setHrDraft(p.wallet_address, { note: e.target.value })
+                        }
+                        placeholder="—"
+                        className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                      />
+                    </td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => void saveHr(p.wallet_address)}
+                        disabled={saving}
+                        className="rounded bg-neutral-700 px-3 py-1 text-xs transition hover:bg-neutral-600 disabled:opacity-50"
+                      >
+                        {saving ? "저장 중…" : "저장"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+              {!hrList.length && (
+                <tr>
+                  <td colSpan={10} className="px-3 py-4 text-center text-sm text-neutral-500">
+                    인사 프로필이 없습니다. 위 입력란에 지갑 주소를 넣고 등록해 주세요.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
     </div>
   );
