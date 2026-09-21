@@ -167,7 +167,6 @@ export async function GET(req: NextRequest) {
       if (
         a.rental_end_date &&
         a.status !== "계약종료" &&
-        a.rental_end_date >= monthStart &&
         a.rental_end_date <= monthEnd3
       ) {
         expiringItems.push({

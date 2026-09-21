@@ -158,7 +158,7 @@ export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
             </div>
             <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
               <p className="text-xs text-neutral-500">
-                {isCurrentMonth ? "이번 달부터 3개월 내 만기 도래" : `${monthLabel} 리포팅 기준 만기 도래`}
+                {isCurrentMonth ? "기한 경과 포함 · 만기(향후 3개월) 도래" : `${monthLabel} 리포팅 기준 기한 경과·만기 도래`}
               </p>
               <p className="mt-1 text-2xl font-semibold text-rose-300">
                 {data.expiringItems.length}건
@@ -252,7 +252,7 @@ export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
             <h3 className="pb-2 text-sm font-semibold text-neutral-300">
               ② 만기 도래 자산 — {data.expiringItems.length}건
               <span className="ml-2 text-[11px] font-normal text-neutral-500">
-                {monthLabel} 시작일 기준 이번 달 + 향후 3개월 내 계약 종료
+                계약종료가 아닌 자산 중 기한 경과 및 향후 3개월 내 만기 도래
               </span>
             </h3>
             {data.expiringItems.length ? (
