@@ -43,11 +43,11 @@ function confirmRuleFor(
   status: EmploymentStatus | null,
   location: WorkLocation | null,
   hireInMonth: boolean,
-  departInMonth: boolean,
+  departInWindow: boolean,
 ): ConfirmRule | null {
   // 우선순위: 퇴직 > 퇴직예정 > 신규입사 > 휴직류 > 재택 > 지사·출장
   if (status === "퇴직") return { reason: "퇴직", action: "기기 반납·이관 확인" };
-  if (departInMonth) return { reason: "퇴직(전근) 예정", action: "기기 반납·이관 확인" };
+  if (departInWindow) return { reason: "퇴직(전근) 예정", action: "기기 반납·이관 확인" };
   if (hireInMonth) return { reason: "신규 입사", action: "장비 지급 확인" };
   if (status === "휴직" || status === "출산휴가" || status === "육아휴직") {
     return { reason: status, action: "기기 보관·대체자 인수 확인" };
@@ -127,12 +127,16 @@ export async function GET(req: NextRequest) {
       if (a.status !== "계약종료") {
         if (profile) {
           const hireInMonth = !!profile.hire_date?.startsWith(month);
-          const departInMonth = !!profile.departure_date?.startsWith(month);
+          const departInWindow = !!(
+            profile.departure_date &&
+            profile.departure_date >= monthStart &&
+            profile.departure_date <= monthEnd3
+          );
           const rule = confirmRuleFor(
             profile.employment_status,
             profile.work_location,
             hireInMonth,
-            departInMonth,
+            departInWindow,
           );
           if (rule) {
             confirmItems.push({
