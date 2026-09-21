@@ -55,7 +55,7 @@ function confirmRuleFor(
   if (status === "파견") return { reason: "파견 근무", action: "파견지 장비 이전·재배정 확인" };
   if (location === "재택") return { reason: "재택 근무", action: "재택 사용·보안 점검" };
   if (location === "지사" || location === "해외지사" || location === "출장중") {
-    return { reason: `${location} 근무`, action: "장비 이전·배정 확인" };
+    return { reason: "자산-근무지 위치 상이", action: "장비 이전·배정 확인" };
   }
   if (status === "수습") return { reason: "수습", action: "사유 확인" };
   if (status === "기타") return { reason: "기타", action: "사유 확인" };

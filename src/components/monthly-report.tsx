@@ -41,9 +41,7 @@ const REASON_BADGE: Record<string, string> = {
   육아휴직: "bg-amber-500/15 text-amber-300",
   "재택 근무": "bg-sky-500/15 text-sky-300",
   "파견 근무": "bg-violet-500/15 text-violet-300",
-  "지사 근무": "bg-violet-500/15 text-violet-300",
-  "해외지사 근무": "bg-violet-500/15 text-violet-300",
-  "출장중 근무": "bg-violet-500/15 text-violet-300",
+  "자산-근무지 위치 상이": "bg-violet-500/15 text-violet-300",
   수습: "bg-cyan-500/15 text-cyan-300",
   기타: "bg-neutral-500/15 text-neutral-300",
 };
