@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { CHAT_MENUS } from "@/lib/chat/menus";
 import { useWallet } from "@/lib/wallet/wallet-context";
+import { ChatMarkdown } from "./chat-markdown";
 
 type ChatRole = "user" | "bot";
 
@@ -221,8 +222,10 @@ export function ChatBot() {
               >
                 {m.pending ? (
                   <span className="animate-pulse">답변 작성 중…</span>
-                ) : (
+                ) : m.role === "user" ? (
                   m.text
+                ) : (
+                  <ChatMarkdown>{m.text}</ChatMarkdown>
                 )}
               </div>
             </div>

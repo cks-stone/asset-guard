@@ -90,8 +90,8 @@
 - **인증**: `x-wallet` 필수(401 거부). `x-admin-wallet`이 화이트리스트에 있으면 관리자 전용 도구가 활성화됨
 - **키**: `GOOGLE_GENERATIVE_AI_API_KEY` — 서버 전용 env (절대 브라우저 미노출)
 - **도구**(`src/lib/chat/tools.ts`): `getMyAssetOverview` · `getPendingTransfers` · `getExpiringAssets` ·
-  `getIdleAssets` · `getAssetDetail` · `getTransferHistory` · `getMonthlyReport` · `searchAssets` ·
-  `estimateRentalCost` · `getWalletContacts` · (관리자) `getCorpOverview` · `getPendingAdminApprovals` · `getHrProfiles`
+  `getIdleAssets` · `getAssetDetail` · `getTransferHistory` · `getMonthlyReport` ·
+  `getWalletContacts` · (관리자) `getCorpOverview` · `getPendingAdminApprovals` · `getHrProfiles`
 - **스코프 규칙**: 일반 사용자 도구는 `managed_by = 내 지갑` 기준으로만 조회(관리자/수신 예정 자산 상세는 예외 허용)
 - **월간 리포팅 판단 로직**은 `/api/monthly-report`와 공유하는 단일 구현 `src/lib/monthly-report/core.ts` 사용
 - **무상태**: 대화 이력은 클라이언트 유지, 요청마다 전달 (브라우저 새로고침 시 초기화)

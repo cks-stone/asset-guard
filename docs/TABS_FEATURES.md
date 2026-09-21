@@ -217,16 +217,12 @@
 ## 7. AI 챗봇 (우하단, 전 화면 공통)
 
 - **동작**: 사용자 질문 → `POST /api/chat`(Gemini + function calling) → 서버 도구로 실제 데이터 조회 후 한국어 답변.
-- **메뉴**(`src/lib/chat/menus.ts`) → 도구 매핑 예:
+- **메뉴**(`src/lib/chat/menus.ts`) → 도구 매핑:
   | 메뉴 | 주요 도구 |
   |---|---|
-  | 앞으로 해야하는 업무내용 | `getPendingTransfers` · `getExpiringAssets` |
-  | 렌탈 예상 견적 | `estimateRentalCost` |
-  | 유휴 자산 추천 | `getIdleAssets` |
+  | 앞으로 해야하는 업무내용 | `getMonthlyReport` (월간 리포팅 — 확인 필요·만기 도래) |
+  | 유휴 자산 추천 | `getIdleAssets` (전사 공개 유휴 데이터셋과 동일) |
   | 이관 인수인계 코치 | `getAssetDetail` · `getTransferHistory` · `getWalletContacts` |
-  | 자동 보고서 생성 | `getMonthlyReport` |
-  | 온체인 감사 조회 | `getTransferHistory` |
-  | 자연어 데이터 탐색 | `searchAssets` |
   | 프로세스/FAQ 안내 | (시스템 프롬프트) |
 - **권한**: 로그인(`x-wallet`) 필수. 관리자 지갑이면 전사 요약·관리자 승인 목록·인사 프로필 도구가 함께 활성화.
 - **스코프**: 일반 사용자는 `managed_by = 내 지갑` 기준으로만 조회 (타인 자산 상세·이관 이력은 수신 예정일 때만).

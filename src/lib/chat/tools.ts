@@ -237,7 +237,7 @@ export function buildChatTools(ctx: ChatToolContext): ToolSet {
     // ── 이관 이력 ─────────────────────────────────────────────────────
     getTransferHistory: tool({
       description:
-        "특정 자산의 이관(인수인계) 이력 — 누가 누구에게, 언제, 어떤 온체인 트랜잭션으로 넘겼는지. 이관 코치·온체인 감사 조회에 사용.",
+        "특정 자산의 이관(인수인계) 이력 — 누가 누구에게, 언제, 어떤 온체인 트랜잭션으로 넘겼는지. 이관 코치·감사 조회에 사용.",
       inputSchema: zodSchema(
         z.object({ management_no: z.string().min(1).max(64) }),
       ),
@@ -277,7 +277,7 @@ export function buildChatTools(ctx: ChatToolContext): ToolSet {
     // ── 월간 리포팅 ───────────────────────────────────────────────────
     getMonthlyReport: tool({
       description:
-        "월간 리포팅 — ①확인 필요 자산(인사·근무 기준)과 ②만기 도래 자산(3개월 내 계약 종료). scope=mine은 내 자산(기본), scope=all은 전사(관리자 전용). 자동 보고서 생성에 사용.",
+        "월간 리포팅 — ①확인 필요 자산(인사·근무 기준)과 ②만기 도래 자산(3개월 내 계약 종료). scope=mine은 내 자산(기본), scope=all은 전사(관리자 전용). 리포팅·업무 정리 질문에 사용.",
       inputSchema: zodSchema(
         z.object({
           month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -333,106 +333,6 @@ export function buildChatTools(ctx: ChatToolContext): ToolSet {
             confirmCount: report.confirmItems.length,
             expiringCount: report.expiringItems.length,
           },
-        };
-      },
-    }),
-
-    // ── 자연어 탐색 ───────────────────────────────────────────────────
-    searchAssets: tool({
-      description:
-        "조건(관리번호·모델·카테고리·제조사·부문/팀·사용자·상태·렌탈사·금액·종료일 범위)으로 자산을 탐색. 일반 사용자는 내 담당 자산 중에서만 검색된다. 데이터 탐색 질문에 사용.",
-      inputSchema: zodSchema(
-        z.object({
-          q: z.string().max(64).optional(),
-          category: z.string().max(64).optional(),
-          division: z.string().max(64).optional(),
-          department: z.string().max(64).optional(),
-          status: z.enum(["정상사용", "유휴", "계약종료"]).optional(),
-          user_name: z.string().max(64).optional(),
-          manufacturer: z.string().max(64).optional(),
-          model: z.string().max(200).optional(),
-          rental_company: z.string().max(64).optional(),
-          fee_min: z.number().int().min(0).max(100_000_000).optional(),
-          fee_max: z.number().int().min(0).max(100_000_000).optional(),
-          end_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-          end_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-          limit: z.number().int().min(1).max(20).default(10),
-        }),
-      ),
-      execute: async (f) => {
-        let query = supabase
-          .from("rental_assets")
-          .select("*")
-          .order("management_no", { ascending: false })
-          .limit(f.limit);
-        if (!ctx.isAdmin) query = query.eq("managed_by", ctx.wallet);
-        const q = f.q?.replace(/[%,.()]/g, " ").trim() || undefined;
-        if (q) {
-          query = query.or(
-            `management_no.ilike.%${q}%,model_name.ilike.%${q}%,serial_no.ilike.%${q}%`,
-          );
-        }
-        if (f.category) query = query.ilike("category", `%${f.category}%`);
-        if (f.division) query = query.eq("division", f.division);
-        if (f.department) query = query.eq("department", f.department);
-        if (f.status) query = query.eq("status", f.status);
-        if (f.user_name) query = query.ilike("user_name", `%${f.user_name}%`);
-        if (f.manufacturer) query = query.ilike("manufacturer", `%${f.manufacturer}%`);
-        if (f.model) query = query.ilike("model_name", `%${f.model}%`);
-        if (f.rental_company) query = query.ilike("rental_company", `%${f.rental_company}%`);
-        if (f.fee_min != null) query = query.gte("rental_fee", f.fee_min);
-        if (f.fee_max != null) query = query.lte("rental_fee", f.fee_max);
-        if (f.end_from) query = query.gte("rental_end_date", f.end_from);
-        if (f.end_to) query = query.lte("rental_end_date", f.end_to);
-
-        const { data, error } = await query;
-        if (error) throw new Error(error.message);
-        const items = ((data ?? []) as RentalAssetRow[]).map((r) => ({
-          ...assetSummary(r),
-          managed_by: shortAddr(r.managed_by),
-        }));
-        return { count: items.length, items };
-      },
-    }),
-
-    // ── 렌탈 견적 ─────────────────────────────────────────────────────
-    estimateRentalCost: tool({
-      description:
-        "렌탈 예상 견적 — 카테고리·수량·기간 기준. 단가를 주면 그 단가로, 없으면 DB 평균 단가를 근거로 계산한다. 참고용 수치임을 밝힐 것.",
-      inputSchema: zodSchema(
-        z.object({
-          category: z.string().min(1).max(64),
-          quantity: z.number().int().min(1).max(1000).default(1),
-          months: z.number().int().min(1).max(60).default(12),
-          unitPrice: z.number().int().min(0).max(100_000_000).optional(),
-        }),
-      ),
-      execute: async ({ category, quantity, months, unitPrice }) => {
-        let unit = unitPrice;
-        let avgSource: string | null = null;
-        if (unit == null) {
-          const { data, error } = await supabase
-            .from("rental_assets")
-            .select("rental_fee")
-            .neq("status", "계약종료")
-            .ilike("category", `%${category}%`)
-            .not("rental_fee", "is", null);
-          if (!error && data && data.length > 0) {
-            const sum = data.reduce((s, r) => s + (r.rental_fee ?? 0), 0);
-            unit = Math.round(sum / data.length);
-            avgSource = `기존 ${category} 렌탈 평균 단가(${data.length}건)`;
-          }
-        }
-        if (unit == null) throw new Error(`"${category}"의 기준 단가를 알 수 없습니다. 단가를 직접 알려 주세요.`);
-        const total = unit * quantity * months;
-        return {
-          category,
-          quantity,
-          months,
-          unitPrice: unit,
-          unitPriceSource: avgSource ?? "사용자 제공 단가",
-          totalExclVAT: total,
-          note: "월 렌탈료 기준 총액이며 실제 견적·부가세·할인은 렌탈사 협의 필요",
         };
       },
     }),

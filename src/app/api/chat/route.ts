@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { generateText } from "ai";
+import { generateText, stepCountIs } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { getAdminWalletFromRequest, getWalletFromRequest } from "@/lib/admin";
 import { SYSTEM_PROMPT } from "@/lib/chat/system";
@@ -61,6 +61,10 @@ export async function POST(req: NextRequest) {
       tools: buildChatTools({ wallet, isAdmin }),
       maxRetries: 1,
       maxOutputTokens: 4000,
+      // v6 기본은 stepCountIs(1) — 도구 호출 그 자체(텍스트 없음)가 step1이면
+      // 결과가 빈 채 종료됨. 도구 실행 후 최종 답변을 쓰는 스텝까지 허용하고,
+      // 과도한 도구 체이닝은 6스텝 상한으로 차단.
+      stopWhen: stepCountIs(6),
     });
 
     return NextResponse.json({ text });
