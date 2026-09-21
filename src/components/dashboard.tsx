@@ -281,7 +281,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="w-full max-w-[2000px] space-y-6">
+    <div className="w-full max-w-[2480px] space-y-6">
       {error && (
         <p className="rounded bg-red-950/60 px-4 py-2 text-sm text-red-300">{error}</p>
       )}

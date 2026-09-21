@@ -10,6 +10,7 @@ import { EMPTY_FILTERS } from "@/lib/supabase/asset-filters";
 import { filtersToSearchParams } from "@/lib/supabase/asset-filters";
 import type { AssetFilters } from "@/lib/supabase/asset-filters";
 import type { RentalAssetRow } from "@/lib/supabase/types";
+import type { EmployeeProfileView } from "@/app/api/employees/route";
 
 async function readJson(res: Response): Promise<{ error?: string; [k: string]: unknown }> {
   try {
@@ -38,6 +39,8 @@ export function AdminConsole() {
   const [busy, setBusy] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchBusy, setBatchBusy] = useState(false);
+  // 인사 정보 관리에 노출되는 사람 목록 — 사용자 변경 select의 옵션 + 분/팀 자동 동기화 소스.
+  const [hrPeople, setHrPeople] = useState<EmployeeProfileView[]>([]);
   // 변경 감지용 이전 스냅샷 — 자동 재조회(폴링·포커스·가시성 복귀 = quiet)에서
   // diff를 건너뛰어 목록 전체가 깜빡이지 않게 한다. 깜빡임은 액션 직후 refresh()에서만.
   const prevAssetsRef = useRef<RentalAssetRow[]>([]);
@@ -204,6 +207,24 @@ export function AdminConsole() {
     }
   };
 
+  // 사용자 변경 — 인사 정보 관리의 사람만 선택할 수 있다.
+  // 인사 프로필에 부문/팀이 있으면 분·팀 컬럼도 함께 동기화한다.
+  const handleUserChange = (asset: RentalAssetRow, v: string) => {
+    const user_name = v || null;
+    const patch: Partial<
+      Pick<
+        RentalAssetRow,
+        "user_name" | "division" | "department"
+      >
+    > = { user_name };
+    if (user_name) {
+      const profile = hrPeople.find((p) => p.user_name?.trim() === user_name);
+      if (profile?.division) patch.division = profile.division;
+      if (profile?.department) patch.department = profile.department;
+    }
+    void handleUpdate(asset, patch);
+  };
+
   const handleBatchAction = async (action: "approve" | "reject") => {
     if (!isAdmin || !publicKey) return;
     const nos = selectable
@@ -329,6 +350,37 @@ export function AdminConsole() {
     });
   }, [assets]);
 
+  // 인사 정보 관리 목록 로드 — 사용자 select 옵션 + 분/팀 자동 동기화 데이터.
+  // 탭 재진입마다 컴포넌트가 마운트되므로 최초 1회 조회로 충분하다.
+  const loadHr = useCallback(async () => {
+    if (!isAdmin || !publicKey) return;
+    try {
+      const res = await fetch("/api/employees", {
+        headers: { "x-admin-wallet": publicKey },
+      });
+      const json = (await readJson(res)) as {
+        error?: string;
+        data?: EmployeeProfileView[];
+      };
+      if (res.ok) setHrPeople(json.data ?? []);
+    } catch {
+      // 목록 로드 실패 시 select는 현재 값만으로 동작한다.
+    }
+  }, [isAdmin, publicKey]);
+
+  useEffect(() => {
+    void loadHr();
+  }, [loadHr]);
+
+  // 사용자 select 옵션 — 인사 정보 관리의 사람들(중복 제거·정렬).
+  const hrNames = useMemo(
+    () =>
+      [...new Set(hrPeople.map((p) => p.user_name?.trim()).filter(Boolean) as string[])].sort(
+        (a, b) => a.localeCompare(b),
+      ),
+    [hrPeople],
+  );
+
   if (!connected) {
     return (
       <div className="w-full max-w-4xl rounded-xl border border-neutral-800 bg-neutral-900 p-6 text-center">
@@ -356,7 +408,7 @@ export function AdminConsole() {
   }
 
   return (
-    <div className="w-full max-w-[1600px] space-y-6">
+    <div className="w-full max-w-[2240px] space-y-6">
       {error && (
         <p className="rounded bg-red-950/60 px-4 py-2 text-sm text-red-300">{error}</p>
       )}
@@ -490,19 +542,28 @@ export function AdminConsole() {
                   </td>
                   <td className="px-3 py-2 text-xs">{a.model_name}</td>
                   <td className="px-3 py-2">
-                    <input
-                      type="text"
+                    <select
                       defaultValue={a.user_name ?? ""}
-                      placeholder="—"
                       disabled={busy === a.management_no}
-                      onBlur={(e) => {
-                        const v = e.target.value.trim();
+                      onChange={(e) => {
+                        const v = e.target.value;
                         if (v !== (a.user_name ?? "")) {
-                          void handleUpdate(a, { user_name: v || null });
+                          handleUserChange(a, v);
                         }
                       }}
                       className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
-                    />
+                    >
+                      <option value="">—</option>
+                      {hrNames.map((n) => (
+                        <option key={n} value={n}>
+                          {n}
+                        </option>
+                      ))}
+                      {a.user_name &&
+                        !hrNames.includes(a.user_name) && (
+                          <option value={a.user_name}>{a.user_name}</option>
+                        )}
+                    </select>
                   </td>
                   <td className="px-3 py-2">
                     <input
