@@ -39,13 +39,25 @@ interface ConfirmRule {
   action: string;
 }
 
+// 자유 텍스트 자산위치 → 근무위치 카테고리로 정규화 (식별 불가 시 null)
+function assetLocationCategory(loc: string | null): WorkLocation | null {
+  if (!loc) return null;
+  const s = loc.toLowerCase();
+  if (s.includes("재택")) return "재택";
+  if (s.includes("해외")) return "해외지사"; // 해외지사가 지사보다 우선
+  if (s.includes("지사")) return "지사";
+  if (s.includes("본사") || s.includes("사옥") || s.includes("hq")) return "본사";
+  return null;
+}
+
 function confirmRuleFor(
   status: EmploymentStatus | null,
-  location: WorkLocation | null,
+  workLocation: WorkLocation | null,
+  assetLocation: string | null,
   hireInMonth: boolean,
   departInWindow: boolean,
 ): ConfirmRule | null {
-  // 우선순위: 퇴직 > 퇴직예정 > 신규입사 > 휴직류 > 파견 > 재택 > 지사·출장 > 수습/기타
+  // 우선순위: 퇴직 > 퇴직예정 > 신규입사 > 휴직류 > 파견 > 위치 불일치 > 수습/기타
   if (status === "퇴직") return { reason: "퇴직", action: "기기 반납·이관 확인" };
   if (departInWindow) return { reason: "퇴직(전근) 예정", action: "기기 반납·이관 확인" };
   if (hireInMonth) return { reason: "신규 입사", action: "장비 지급 확인" };
@@ -53,8 +65,9 @@ function confirmRuleFor(
     return { reason: status, action: "기기 보관·대체자 인수 확인" };
   }
   if (status === "파견") return { reason: "파견 근무", action: "파견지 장비 이전·재배정 확인" };
-  if (location === "재택") return { reason: "재택 근무", action: "재택 사용·보안 점검" };
-  if (location === "지사" || location === "해외지사" || location === "출장중") {
+  // 자산 위치와 근무 위치가 모두 식별되고 서로 다르면 위치 상이 판정 (자산위치 미상은 제외).
+  const assetCat = assetLocationCategory(assetLocation);
+  if (assetCat && workLocation && assetCat !== workLocation) {
     return { reason: "자산-근무지 위치 상이", action: "장비 이전·배정 확인" };
   }
   if (status === "수습") return { reason: "수습", action: "사유 확인" };
@@ -138,6 +151,7 @@ export async function GET(req: NextRequest) {
           const rule = confirmRuleFor(
             profile.employment_status,
             profile.work_location,
+            a.location,
             hireInMonth,
             departInWindow,
           );
