@@ -38,7 +38,7 @@ const REASON_BADGE: Record<string, string> = {
   "출장중 근무": "bg-violet-500/15 text-violet-300",
 };
 
-export function MonthlyReport() {
+export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
   const { publicKey, connected } = useWallet();
   const [ym, setYm] = useState(currentYm());
   const [data, setData] = useState<MonthlyReportData | null>(null);
@@ -51,8 +51,11 @@ export function MonthlyReport() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/monthly-report?month=${ym}`, {
-        headers: { "x-wallet": publicKey },
+      const res = await fetch(`/api/monthly-report?scope=${scope}&month=${ym}`, {
+        headers:
+          scope === "all"
+            ? { "x-wallet": publicKey, "x-admin-wallet": publicKey }
+            : { "x-wallet": publicKey },
       });
       const json = (await readJson(res)) as { error?: string; data?: MonthlyReportData };
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
@@ -63,7 +66,7 @@ export function MonthlyReport() {
     } finally {
       setLoading(false);
     }
-  }, [connected, publicKey, ym]);
+  }, [connected, publicKey, ym, scope]);
 
   useEffect(() => {
     void load();
@@ -80,8 +83,9 @@ export function MonthlyReport() {
         <div>
           <h2 className="text-lg font-semibold">월간 리포팅</h2>
           <p className="mt-0.5 text-xs text-neutral-500">
-            인사상태·근무위치 기준으로 해당 월 확인이 필요한 자산과, 만기(계약 종료)가 도래하는
-            자산을 한눈에 보여 줍니다.
+            {scope === "all"
+              ? "전사 전체 자산 기준 — 인사상태·근무위치로 확인이 필요한 자산과 만기(계약 종료) 도래 자산을 한눈에 보여 줍니다."
+              : "내가 관리하는 자산 기준 — 인사상태·근무위치로 확인이 필요한 자산과 만기(계약 종료) 도래 자산을 한눈에 보여 줍니다."}
           </p>
         </div>
         <div className="flex items-center gap-2">

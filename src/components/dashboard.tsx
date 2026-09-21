@@ -17,7 +17,46 @@ async function readJson(res: Response): Promise<{ error?: string; [k: string]: u
   }
 }
 
-type TabKey = "overview" | "my" | "idle" | "admin";
+type TabKey = "overview" | "my" | "idle" | "corp" | "admin";
+
+type StatCard = { label: string; value: number | string; accent: string };
+
+function StatCards({ cards }: { cards: StatCard[] }) {
+  return (
+    <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      {cards.map((s) => (
+        <div
+          key={s.label}
+          className="rounded-xl border border-neutral-800 bg-neutral-900 p-4"
+        >
+          <p className={`text-2xl font-bold ${s.accent}`}>{s.value}</p>
+          <p className="mt-1 text-xs text-neutral-400">{s.label}</p>
+        </div>
+      ))}
+    </section>
+  );
+}
+
+function buildStatCards(p: {
+  total: number;
+  normal: number;
+  idle: number;
+  transfers: number;
+  monthlyFee: number;
+  now: Date;
+}): StatCard[] {
+  return [
+    { label: "총 렌탈 자산", value: p.total, accent: "text-neutral-200" },
+    { label: "정상사용", value: p.normal, accent: "text-emerald-300" },
+    { label: "유휴", value: p.idle, accent: "text-sky-300" },
+    { label: "이전 진행", value: p.transfers, accent: "text-amber-300" },
+    {
+      label: `${p.now.getMonth() + 1}월 렌탈비 합계`,
+      value: p.monthlyFee ? `₩${p.monthlyFee.toLocaleString()}` : "₩0",
+      accent: "text-blue-300",
+    },
+  ];
+}
 
 const tabCls = (active: boolean) =>
   `rounded-lg px-3 py-2 text-left text-sm font-medium whitespace-nowrap ${
@@ -39,6 +78,8 @@ export function Dashboard() {
   const [summaryAssets, setSummaryAssets] = useState<RentalAssetRow[]>([]);
   // "이전 진행" 카드에 반영할, 내게 이전 요청이 온 인입 자산 수.
   const [incomingCount, setIncomingCount] = useState(0);
+  // 전사 대시보드(관리자 전용) — 전체 자산 기반 조회(all=1).
+  const [corpAssets, setCorpAssets] = useState<RentalAssetRow[]>([]);
 
   useEffect(() => {
     const onRejection = (e: PromiseRejectionEvent) => {
@@ -102,12 +143,29 @@ export function Dashboard() {
     }
   }, [publicKey]);
 
+  // 전사 대시보드 — 관리자만 전체 자산을 조회한다(계약종료 포함).
+  const refreshCorp = useCallback(async () => {
+    if (!isAdmin || !publicKey) return;
+    try {
+      const url = new URL("/api/rental-assets?all=1", window.location.origin);
+      const res = await fetch(url, { headers: { "x-admin-wallet": publicKey } });
+      const json = (await readJson(res)) as {
+        error?: string;
+        data?: RentalAssetRow[];
+      };
+      if (res.ok) setCorpAssets(json.data ?? []);
+    } catch (err) {
+      console.error("[dashboard] 전사 자산 조회 실패:", err);
+    }
+  }, [isAdmin, publicKey]);
+
   useEffect(() => {
     if (publicKey) {
       void refreshSummary();
       void refreshIncomingCount();
     }
-  }, [publicKey, refreshSummary, refreshIncomingCount]);
+    if (isAdmin) void refreshCorp();
+  }, [publicKey, isAdmin, refreshSummary, refreshIncomingCount, refreshCorp]);
 
   // 포커스·가시성 복귀 + 10초 폴링으로 요약 지표를 조용히 최신화.
   useEffect(() => {
@@ -115,6 +173,7 @@ export function Dashboard() {
     const onVisible = () => {
       void refreshSummary();
       void refreshIncomingCount();
+      if (isAdmin) void refreshCorp();
     };
     window.addEventListener("focus", onVisible);
     const onVisChange = () => {
@@ -127,7 +186,7 @@ export function Dashboard() {
       document.removeEventListener("visibilitychange", onVisChange);
       window.clearInterval(id);
     };
-  }, [connected, publicKey, refreshSummary, refreshIncomingCount]);
+  }, [connected, publicKey, isAdmin, refreshSummary, refreshIncomingCount, refreshCorp]);
 
   const stats = useMemo(() => {
     const total = summaryAssets.length;
@@ -150,6 +209,46 @@ export function Dashboard() {
     return { total, countByStatus, pendingOutgoing, monthlyFee, now };
   }, [summaryAssets]);
 
+  const overviewCards = useMemo(
+    () =>
+      buildStatCards({
+        total: stats.total,
+        normal: stats.countByStatus("정상사용"),
+        idle: stats.countByStatus("유휴"),
+        transfers: incomingCount + stats.pendingOutgoing,
+        monthlyFee: stats.monthlyFee,
+        now: stats.now,
+      }),
+    [stats, incomingCount],
+  );
+
+  // 전사 대시보드 지표 — 전체 자산 기준(계약종료 포함).
+  const corpCards = useMemo(() => {
+    const now = new Date();
+    const countByStatus = (s: RentalAssetStatus) =>
+      corpAssets.filter((a) => a.status === s).length;
+    // 전사 "이전 진행" = 진행 중인 모든 이전 요청 수.
+    const transfers = corpAssets.filter(
+      (a) =>
+        a.pending_to_wallet &&
+        !a.pending_receiver_approved_at &&
+        !a.pending_receiver_rejected_at,
+    ).length;
+    const monthlyFee =
+      buildYearPayments(
+        corpAssets.filter((a) => a.status !== "계약종료"),
+        now.getFullYear(),
+      ).byMonth.get(now.getMonth() + 1) ?? 0;
+    return buildStatCards({
+      total: corpAssets.length,
+      normal: countByStatus("정상사용"),
+      idle: countByStatus("유휴"),
+      transfers,
+      monthlyFee,
+      now,
+    });
+  }, [corpAssets]);
+
   if (!connected) {
     return (
       <div className="w-full max-w-3xl rounded-xl border border-neutral-800 bg-neutral-900 p-10 text-center">
@@ -167,28 +266,15 @@ export function Dashboard() {
     );
   }
 
-  const statCards = [
-    { label: "총 렌탈 자산", value: stats.total, accent: "text-neutral-200" },
-    { label: "정상사용", value: stats.countByStatus("정상사용"), accent: "text-emerald-300" },
-    { label: "유휴", value: stats.countByStatus("유휴"), accent: "text-sky-300" },
-    {
-      label: "이전 진행",
-      value: incomingCount + stats.pendingOutgoing,
-      accent: "text-amber-300",
-    },
-    {
-      label: `${stats.now.getMonth() + 1}월 렌탈비 합계`,
-      value: stats.monthlyFee ? `₩${stats.monthlyFee.toLocaleString()}` : "₩0",
-      accent: "text-blue-300",
-    },
-  ];
-
   const tabs: { key: TabKey; label: string }[] = [
     { key: "overview", label: "대시보드" },
     { key: "my", label: "내가 관리하고 있는 자산목록" },
     { key: "idle", label: "유휴 자산(전사)" },
   ];
-  if (isAdmin) tabs.push({ key: "admin", label: "관리자 렌탈 자산 관리" });
+  if (isAdmin) {
+    tabs.push({ key: "corp", label: "전사 대시보드" });
+    tabs.push({ key: "admin", label: "관리자 렌탈 자산 관리" });
+  }
 
   return (
     <div className="w-full max-w-[2000px] space-y-6">
@@ -216,19 +302,18 @@ export function Dashboard() {
         <div className="min-w-0 flex-1 space-y-6">
           {tab === "overview" && (
             <>
-              <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
-                {statCards.map((s) => (
-                  <div
-                    key={s.label}
-                    className="rounded-xl border border-neutral-800 bg-neutral-900 p-4"
-                  >
-                    <p className={`text-2xl font-bold ${s.accent}`}>{s.value}</p>
-                    <p className="mt-1 text-xs text-neutral-400">{s.label}</p>
-                  </div>
-                ))}
-              </section>
+              <StatCards cards={overviewCards} />
               <BillingCalendar assets={summaryAssets} />
-              <MonthlyReport />
+              <MonthlyReport scope="mine" />
+            </>
+          )}
+          {tab === "corp" && isAdmin && (
+            <>
+              <StatCards cards={corpCards} />
+              <BillingCalendar
+                assets={corpAssets.filter((a) => a.status !== "계약종료")}
+              />
+              <MonthlyReport scope="all" />
             </>
           )}
           {tab === "my" && <MyAssetsList />}
