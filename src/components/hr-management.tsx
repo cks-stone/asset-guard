@@ -68,32 +68,6 @@ export function HrManagement() {
     [connected, publicKey, adminWallets],
   );
 
-  if (!connected) {
-    return (
-      <div className="w-full max-w-4xl rounded-xl border border-neutral-800 bg-neutral-900 p-6 text-center">
-        <p className="text-sm text-neutral-400">
-          인사 정보 관리를 사용하려면 지갑을 연결하세요.
-        </p>
-        <button
-          onClick={() => void connect()}
-          className="mt-4 rounded bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-500"
-        >
-          지갑 연결
-        </button>
-      </div>
-    );
-  }
-
-  if (!isAdmin) {
-    return (
-      <div className="w-full max-w-4xl rounded-xl border border-red-900/60 bg-red-950/40 p-6 text-center">
-        <p className="text-sm text-red-300">
-          연결된 지갑({shortAddr(publicKey)})은 관리자 화이트리스트에 없습니다.
-        </p>
-      </div>
-    );
-  }
-
   const fetchHr = useCallback(
     async (q?: string) => {
       if (!isAdmin || !publicKey) return;
@@ -135,6 +109,32 @@ export function HrManagement() {
   useEffect(() => {
     if (isAdmin) void fetchHr();
   }, [isAdmin, fetchHr]);
+
+  if (!connected) {
+    return (
+      <div className="w-full max-w-4xl rounded-xl border border-neutral-800 bg-neutral-900 p-6 text-center">
+        <p className="text-sm text-neutral-400">
+          인사 정보 관리를 사용하려면 지갑을 연결하세요.
+        </p>
+        <button
+          onClick={() => void connect()}
+          className="mt-4 rounded bg-violet-600 px-4 py-2 text-sm text-white hover:bg-violet-500"
+        >
+          지갑 연결
+        </button>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="w-full max-w-4xl rounded-xl border border-red-900/60 bg-red-950/40 p-6 text-center">
+        <p className="text-sm text-red-300">
+          연결된 지갑({shortAddr(publicKey)})은 관리자 화이트리스트에 없습니다.
+        </p>
+      </div>
+    );
+  }
 
   const setHrDraft = (user: string, patch: Partial<HrDraft>) => {
     setHrDrafts((prev) => ({
