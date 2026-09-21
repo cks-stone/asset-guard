@@ -524,7 +524,7 @@ export function MyAssetsList() {
                         </span>
                       ) : a.pending_receiver_approved_at ? (
                         <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
-                          인수 승인 완료 · 관리자 최종 승인 대기
+                          인수 승인 완료
                         </span>
                       ) : (
                         <div className="flex flex-wrap items-center gap-1">
@@ -556,14 +556,9 @@ export function MyAssetsList() {
                             ↦ {shortMiddle(a.pending_to_wallet)} 인수 거절
                           </span>
                         ) : a.pending_receiver_approved_at ? (
-                          <>
-                            <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
-                              ↦ {shortMiddle(a.pending_to_wallet)} 승인 완료
-                            </span>
-                            <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
-                              관리자 승인 대기
-                            </span>
-                          </>
+                          <span className="rounded bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-300">
+                            ↦ {shortMiddle(a.pending_to_wallet)} 승인 완료
+                          </span>
                         ) : (
                           <>
                             <span className="rounded bg-amber-500/15 px-2 py-0.5 text-xs text-amber-300">
