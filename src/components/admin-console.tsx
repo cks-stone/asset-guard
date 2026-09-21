@@ -573,6 +573,7 @@ export function AdminConsole() {
                 <th className="px-3 py-2 font-medium">자산위치</th>
                 <th className="px-3 py-2 font-medium">렌탈사</th>
                 <th className="px-3 py-2 font-medium">렌탈료</th>
+                <th className="px-3 py-2 font-medium">시작일</th>
                 <th className="px-3 py-2 font-medium">종료일</th>
                 <th className="px-3 py-2 font-medium">상태</th>
                 <th className="px-3 py-2 font-medium">이전 요청</th>
@@ -711,6 +712,20 @@ export function AdminConsole() {
                         const fee = Number(v);
                         if (!Number.isNaN(fee) && fee >= 0 && fee !== a.rental_fee) {
                           void handleUpdate(a, { rental_fee: fee });
+                        }
+                      }}
+                      className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                    />
+                  </td>
+                  <td className="px-3 py-2">
+                    <input
+                      type="date"
+                      defaultValue={a.rental_start_date ?? ""}
+                      disabled={busy === a.management_no}
+                      onBlur={(e) => {
+                        const v = e.target.value;
+                        if (v !== (a.rental_start_date ?? "")) {
+                          void handleUpdate(a, { rental_start_date: v || null });
                         }
                       }}
                       className="w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
