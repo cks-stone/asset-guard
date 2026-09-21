@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminConsole } from "@/components/admin-console";
+import { HrManagement } from "@/components/hr-management";
 import { MyAssetsList } from "@/components/my-assets-list";
 import { IdleAssetsList } from "@/components/idle-assets-list";
 import { useWallet } from "@/lib/wallet/wallet-context";
@@ -17,7 +18,7 @@ async function readJson(res: Response): Promise<{ error?: string; [k: string]: u
   }
 }
 
-type TabKey = "overview" | "my" | "idle" | "corp" | "admin";
+type TabKey = "overview" | "my" | "idle" | "corp" | "admin" | "hr";
 
 type StatCard = { label: string; value: number | string; accent: string };
 
@@ -276,6 +277,7 @@ export function Dashboard() {
   tabs.push({ key: "idle", label: "유휴 자산(전사)" });
   if (isAdmin) {
     tabs.push({ key: "admin", label: "관리자 렌탈 자산 관리" });
+    tabs.push({ key: "hr", label: "인사 정보 관리" });
   }
 
   return (
@@ -321,6 +323,7 @@ export function Dashboard() {
           {tab === "my" && <MyAssetsList />}
           {tab === "idle" && <IdleAssetsList />}
           {tab === "admin" && isAdmin && <AdminConsole />}
+          {tab === "hr" && isAdmin && <HrManagement />}
         </div>
       </div>
     </div>
