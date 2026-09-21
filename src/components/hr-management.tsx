@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useWallet } from "@/lib/wallet/wallet-context";
 import { EMPLOYMENT_STATUSES, WORK_LOCATIONS } from "@/lib/supabase/types";
+import { DIVISIONS, DEPARTMENTS } from "@/lib/supabase/types";
 import type { EmploymentStatus, WorkLocation } from "@/lib/supabase/types";
 import type { EmployeeProfileView } from "@/app/api/employees/route";
 
@@ -21,6 +22,8 @@ interface HrDraft {
   user_name: string;
   employment_status: EmploymentStatus;
   work_location: WorkLocation;
+  division: string;
+  department: string;
   job_title: string;
   hire_date: string;
   departure_date: string;
@@ -31,6 +34,8 @@ const emptyHrDraft = (user: string): HrDraft => ({
   user_name: user,
   employment_status: "재직",
   work_location: "본사",
+  division: "",
+  department: "",
   job_title: "",
   hire_date: "",
   departure_date: "",
@@ -49,6 +54,30 @@ export function HrManagement() {
   const hrQRef = useRef("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  // 부문/팀 select 옵션 — 목록 밖에 저장된 값(렌탈 자산 유래)이 있으면 현재 값도 보완 노출
+  const divOptions = useMemo(
+    () => [
+      ...new Set<string>([
+        ...DIVISIONS,
+        ...hrList
+          .map((p) => hrDrafts[p.user_name]?.division || p.division)
+          .filter((v): v is string => Boolean(v)),
+      ]),
+    ],
+    [hrList, hrDrafts],
+  );
+  const deptOptions = useMemo(
+    () => [
+      ...new Set<string>([
+        ...DEPARTMENTS,
+        ...hrList
+          .map((p) => hrDrafts[p.user_name]?.department || p.department)
+          .filter((v): v is string => Boolean(v)),
+      ]),
+    ],
+    [hrList, hrDrafts],
+  );
 
   useEffect(() => {
     void fetch("/api/admin/config")
@@ -90,6 +119,8 @@ export function HrManagement() {
                 ...emptyHrDraft(p.user_name),
                 employment_status: p.employment_status ?? "재직",
                 work_location: p.work_location ?? "본사",
+                division: p.division ?? "",
+                department: p.department ?? "",
                 job_title: p.job_title ?? "",
                 hire_date: p.hire_date ?? "",
                 departure_date: p.departure_date ?? "",
@@ -161,6 +192,8 @@ export function HrManagement() {
           user_name: d.user_name,
           employment_status: d.employment_status,
           work_location: d.work_location,
+          division: d.division || null,
+          department: d.department || null,
           job_title: d.job_title || null,
           hire_date: d.hire_date || null,
           departure_date: d.departure_date || null,
@@ -275,7 +308,7 @@ export function HrManagement() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1100px]">
+          <table className="w-full min-w-[1200px]">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 text-left font-medium">이름</th>
@@ -308,8 +341,39 @@ export function HrManagement() {
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-xs text-neutral-300">
-                      {[p.division, p.department].filter(Boolean).join(" / ") || "—"}
+                    <td className="px-3 py-2">
+                      <div className="flex w-full items-center gap-1.5">
+                        <select
+                          value={d.division}
+                          disabled={saving}
+                          onChange={(e) =>
+                            setHrDraft(p.user_name, { division: e.target.value })
+                          }
+                          className="min-w-[6.5rem] flex-1 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                        >
+                          <option value="">부문 —</option>
+                          {divOptions.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={d.department}
+                          disabled={saving}
+                          onChange={(e) =>
+                            setHrDraft(p.user_name, { department: e.target.value })
+                          }
+                          className="min-w-[6.5rem] flex-1 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs"
+                        >
+                          <option value="">팀 —</option>
+                          {deptOptions.map((o) => (
+                            <option key={o} value={o}>
+                              {o}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </td>
                     <td className="px-3 py-2">
                       <select

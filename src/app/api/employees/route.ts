@@ -14,6 +14,8 @@ const employeeSchema = z.object({
   employment_status: z.enum(EMPLOYMENT_STATUSES).default("재직"),
   work_location: z.enum(WORK_LOCATIONS).default("본사"),
   job_title: z.string().trim().max(64).nullable().optional(),
+  division: z.string().trim().max(64).nullable().optional(),
+  department: z.string().trim().max(64).nullable().optional(),
   hire_date: dateSchema.nullable().optional(),
   departure_date: dateSchema.nullable().optional(),
   note: z.string().trim().max(500).nullable().optional(),
@@ -97,8 +99,8 @@ export async function GET(req: NextRequest) {
         departure_date: p.departure_date,
         note: p.note,
         updated_at: p.updated_at,
-        division: divisionByUser.get(p.user_name.toLowerCase()) ?? null,
-        department: departmentByUser.get(p.user_name.toLowerCase()) ?? null,
+        division: p.division ?? divisionByUser.get(p.user_name.toLowerCase()) ?? null,
+        department: p.department ?? departmentByUser.get(p.user_name.toLowerCase()) ?? null,
         source: null,
       });
     }
@@ -166,6 +168,8 @@ export async function POST(req: NextRequest) {
           user_name: user_name.trim(),
           ...rest,
           job_title: rest.job_title ?? null,
+          division: rest.division ?? null,
+          department: rest.department ?? null,
           hire_date: rest.hire_date ?? null,
           departure_date: rest.departure_date ?? null,
           note: rest.note ?? null,

@@ -95,7 +95,7 @@
   - `pending_receiver_approved_at`, `pending_receiver_rejected_at`: 수신자 인수 승인/거절 (0010)
 - `public.wallet_labels` — 지갑별 프로필/부문·팀 (0009 기본, 0011 분·팀 추가), 디렉토리 인덱스
 - `public.transfer_history` — 이전 이력 (0009)
-- `public.employee_profiles` — 인사 프로필 (0014, `user_name` 유니크 upsert; 인사 상태/근무 위치/직급/입·퇴사일)
+- `public.employee_profiles` — 인사 프로필 (0014, `user_name` 유니크 upsert; 인사 상태/근무 위치/직급/입·퇴사일; 0015에서 `division`/`department` 부문·팀 추가)
 - `public.assets` / `public.handovers` — (구버전 M1~, 0004에서 정리)
 
 > **온체인 기록**: 이관 증거는 자산별 PDA 계정이 아니라 **트랜잭션 서명 + `HandoverCreated` 이벤트 로그**(무계정, account-less)로 남는다. 자세한 내용은 [BLOCKCHAIN_DESIGN.md](./BLOCKCHAIN_DESIGN.md) 참고.

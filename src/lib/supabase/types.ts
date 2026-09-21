@@ -18,6 +18,21 @@ export type EmploymentStatus = (typeof EMPLOYMENT_STATUSES)[number];
 
 export const WORK_LOCATIONS = ["본사", "지사", "재택", "해외지사", "출장중"] as const;
 export type WorkLocation = (typeof WORK_LOCATIONS)[number];
+
+// M38 — 인사(HR) 부문/팀 선택 목록 (인사 정보 관리 select)
+// 렌탈 자산 씨드 기반. 목록 밖 값은 화면에서 현재 값 보완 옵션으로 노출한다.
+export const DIVISIONS = ["A부문", "B부문", "C부문"] as const;
+export type Division = (typeof DIVISIONS)[number];
+
+export const DEPARTMENTS = [
+  "AAAA팀",
+  "BBBB팀",
+  "CCCC팀",
+  "DDDD팀",
+  "EEEE팀",
+  "FFFF팀",
+] as const;
+export type Department = (typeof DEPARTMENTS)[number];
 export type RentalAssetCategory =
   | "모니터"
   | "노트북"
@@ -138,6 +153,8 @@ export interface EmployeeProfileRow {
   employment_status: EmploymentStatus;
   work_location: WorkLocation;
   job_title: string | null;
+  division: string | null;
+  department: string | null;
   hire_date: string | null;
   departure_date: string | null;
   note: string | null;
