@@ -413,24 +413,24 @@ export function AdminConsole() {
           </div>
         )}
         <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[1600px] border-collapse whitespace-nowrap text-left text-sm">
+          <table className="w-full min-w-[2000px] border-collapse whitespace-nowrap text-left text-sm">
             <thead>
               <tr className="border-b border-neutral-700 text-xs text-neutral-500">
                 <th className="px-3 py-2 font-medium">선택</th>
-                <th className="px-3 py-2 font-medium">관리번호</th>
-                <th className="px-3 py-2 font-medium">카테고리</th>
-                <th className="px-3 py-2 font-medium">모델명</th>
-                <th className="px-3 py-2 font-medium">사용자</th>
-                <th className="px-3 py-2 font-medium">부문</th>
-                <th className="px-3 py-2 font-medium">팀</th>
-                <th className="px-3 py-2 font-medium">자산위치</th>
-                <th className="px-3 py-2 font-medium">렌탈사</th>
-                <th className="px-3 py-2 font-medium">렌탈료</th>
-                <th className="px-3 py-2 font-medium">시작일</th>
-                <th className="px-3 py-2 font-medium">종료일</th>
-                <th className="px-3 py-2 font-medium">상태</th>
-                <th className="px-3 py-2 font-medium">이전 요청</th>
-                <th className="px-3 py-2 font-medium">이관 기록</th>
+                <th className="min-w-[7rem] px-3 py-2 font-medium">관리번호</th>
+                <th className="min-w-[7rem] px-3 py-2 font-medium">카테고리</th>
+                <th className="min-w-[12rem] px-3 py-2 font-medium">모델명</th>
+                <th className="min-w-[8rem] px-3 py-2 font-medium">사용자</th>
+                <th className="min-w-[8rem] px-3 py-2 font-medium">부문</th>
+                <th className="min-w-[9rem] px-3 py-2 font-medium">팀</th>
+                <th className="min-w-[8rem] px-3 py-2 font-medium">자산위치</th>
+                <th className="min-w-[10rem] px-3 py-2 font-medium">렌탈사</th>
+                <th className="min-w-[7rem] px-3 py-2 font-medium">렌탈료</th>
+                <th className="min-w-[9rem] px-3 py-2 font-medium">시작일</th>
+                <th className="min-w-[9rem] px-3 py-2 font-medium">종료일</th>
+                <th className="min-w-[7rem] px-3 py-2 font-medium">상태</th>
+                <th className="min-w-[14rem] px-3 py-2 font-medium">이전 요청</th>
+                <th className="min-w-[10rem] px-3 py-2 font-medium">이관 기록</th>
               </tr>
             </thead>
             <tbody>
