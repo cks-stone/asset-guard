@@ -25,6 +25,13 @@ function shiftYm(ym: string, delta: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
 }
 
+function daysUntil(dateStr: string): number {
+  const end = new Date(`${dateStr}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((end.getTime() - today.getTime()) / 86_400_000);
+}
+
 const REASON_BADGE: Record<string, string> = {
   퇴직: "bg-red-500/15 text-red-300",
   "퇴직(전근) 예정": "bg-orange-500/15 text-orange-300",
@@ -33,9 +40,12 @@ const REASON_BADGE: Record<string, string> = {
   출산휴가: "bg-amber-500/15 text-amber-300",
   육아휴직: "bg-amber-500/15 text-amber-300",
   "재택 근무": "bg-sky-500/15 text-sky-300",
+  "파견 근무": "bg-violet-500/15 text-violet-300",
   "지사 근무": "bg-violet-500/15 text-violet-300",
   "해외지사 근무": "bg-violet-500/15 text-violet-300",
   "출장중 근무": "bg-violet-500/15 text-violet-300",
+  수습: "bg-cyan-500/15 text-cyan-300",
+  기타: "bg-neutral-500/15 text-neutral-300",
 };
 
 export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
@@ -175,6 +185,8 @@ export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
                       <th className="px-3 py-2 text-left font-medium">자산위치</th>
                       <th className="px-3 py-2 text-left font-medium">인사상태</th>
                       <th className="px-3 py-2 text-left font-medium">근무위치</th>
+                      <th className="px-3 py-2 text-left font-medium">입사일</th>
+                      <th className="px-3 py-2 text-left font-medium">퇴직(예정)일</th>
                       <th className="px-3 py-2 text-left font-medium">권장 조치</th>
                     </tr>
                   </thead>
@@ -208,6 +220,23 @@ export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
                           {it.employment_status ?? "—"}
                         </td>
                         <td className="px-3 py-2 whitespace-nowrap">{it.work_location ?? "—"}</td>
+                        <td className="px-3 py-2 font-mono whitespace-nowrap">
+                          {it.hire_date ?? "—"}
+                        </td>
+                        <td className="px-3 py-2 whitespace-nowrap">
+                          {it.departure_date ? (
+                            <>
+                              <span className="font-mono">{it.departure_date}</span>
+                              {daysUntil(it.departure_date) >= 0 && (
+                                <span className="ml-2 text-[10px] text-neutral-500">
+                                  {daysUntil(it.departure_date)}일 남음
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td className="px-3 py-2 text-neutral-300">{it.action}</td>
                       </tr>
                     ))}
@@ -274,7 +303,9 @@ export function MonthlyReport({ scope = "mine" }: { scope?: "mine" | "all" }) {
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap">{it.location ?? "—"}</td>
                           <td className="px-3 py-2 font-mono whitespace-nowrap">{it.rental_end_date}</td>
-                          <td className="px-3 py-2 text-neutral-300">{it.action}</td>
+                          <td className={`px-3 py-2 ${overdue ? "font-medium text-red-300" : "text-neutral-300"}`}>
+                            {it.action}
+                          </td>
                         </tr>
                       );
                     })}

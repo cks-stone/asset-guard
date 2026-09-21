@@ -45,17 +45,20 @@ function confirmRuleFor(
   hireInMonth: boolean,
   departInWindow: boolean,
 ): ConfirmRule | null {
-  // 우선순위: 퇴직 > 퇴직예정 > 신규입사 > 휴직류 > 재택 > 지사·출장
+  // 우선순위: 퇴직 > 퇴직예정 > 신규입사 > 휴직류 > 파견 > 재택 > 지사·출장 > 수습/기타
   if (status === "퇴직") return { reason: "퇴직", action: "기기 반납·이관 확인" };
   if (departInWindow) return { reason: "퇴직(전근) 예정", action: "기기 반납·이관 확인" };
   if (hireInMonth) return { reason: "신규 입사", action: "장비 지급 확인" };
   if (status === "휴직" || status === "출산휴가" || status === "육아휴직") {
     return { reason: status, action: "기기 보관·대체자 인수 확인" };
   }
+  if (status === "파견") return { reason: "파견 근무", action: "파견지 장비 이전·재배정 확인" };
   if (location === "재택") return { reason: "재택 근무", action: "재택 사용·보안 점검" };
   if (location === "지사" || location === "해외지사" || location === "출장중") {
     return { reason: `${location} 근무`, action: "장비 이전·배정 확인" };
   }
+  if (status === "수습") return { reason: "수습", action: "사유 확인" };
+  if (status === "기타") return { reason: "기타", action: "사유 확인" };
   return null;
 }
 
@@ -177,7 +180,10 @@ export async function GET(req: NextRequest) {
           location: a.location,
           rental_end_date: a.rental_end_date,
           days_left: daysUntil(a.rental_end_date),
-          action: "재계약(연장)·반납 검토",
+          action:
+            daysUntil(a.rental_end_date) < 0
+              ? "반납·연장 대책 필요 (기한 경과)"
+              : "재계약(연장)·반납 검토",
         });
       }
     }
