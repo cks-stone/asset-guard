@@ -268,11 +268,13 @@ export function Dashboard() {
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: "overview", label: "대시보드" },
-    { key: "my", label: "내가 관리하고 있는 자산목록" },
-    { key: "idle", label: "유휴 자산(전사)" },
   ];
   if (isAdmin) {
     tabs.push({ key: "corp", label: "전사 대시보드" });
+  }
+  tabs.push({ key: "my", label: "내가 관리하고 있는 자산목록" });
+  tabs.push({ key: "idle", label: "유휴 자산(전사)" });
+  if (isAdmin) {
     tabs.push({ key: "admin", label: "관리자 렌탈 자산 관리" });
   }
 
