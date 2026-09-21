@@ -457,6 +457,25 @@ export function AdminConsole() {
     });
   };
 
+  // 표시 정렬: 이전 요청이 진행 중인 자산(수신자 승인 대기 → 수신자 승인)을 최상단에 배치.
+  const orderedAssets = useMemo(() => {
+    const transferRank = (a: RentalAssetRow) => {
+      if (
+        !a.pending_to_wallet ||
+        a.pending_receiver_rejected_at ||
+        a.pending_approved_at
+      ) {
+        return 2;
+      }
+      return a.pending_receiver_approved_at ? 1 : 0;
+    };
+    return [...assets].sort((x, y) => {
+      const d = transferRank(x) - transferRank(y);
+      if (d !== 0) return d;
+      return y.management_no.localeCompare(x.management_no);
+    });
+  }, [assets]);
+
   if (!connected) {
     return (
       <div className="w-full max-w-4xl rounded-xl border border-neutral-800 bg-neutral-900 p-6 text-center">
@@ -482,25 +501,6 @@ export function AdminConsole() {
       </div>
     );
   }
-
-  // 표시 정렬: 이전 요청이 진행 중인 자산(수신자 승인 대기 → 수신자 승인)을 최상단에 배치.
-  const orderedAssets = useMemo(() => {
-    const transferRank = (a: RentalAssetRow) => {
-      if (
-        !a.pending_to_wallet ||
-        a.pending_receiver_rejected_at ||
-        a.pending_approved_at
-      ) {
-        return 2;
-      }
-      return a.pending_receiver_approved_at ? 1 : 0;
-    };
-    return [...assets].sort((x, y) => {
-      const d = transferRank(x) - transferRank(y);
-      if (d !== 0) return d;
-      return y.management_no.localeCompare(x.management_no);
-    });
-  }, [assets]);
 
   return (
     <div className="w-full max-w-[1600px] space-y-6">
