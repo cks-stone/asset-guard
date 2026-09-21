@@ -105,7 +105,8 @@ export function LineageView({ managementNo }: { managementNo: string }) {
             </div>
             <p className="mt-3 text-xs text-neutral-500">
               지갑으로 로그인한 사용자 누구나 이 자산이 거쳐간 지갑 이동 경로를 볼 수
-              있습니다. 온체인 PDA가 진실 소스이며, 아래 기록은 조회용입니다.
+              있습니다. 온체인 트랜잭션(HandoverCreated 이벤트 로그 + 서명)이 증거이며,
+              아래 기록은 조회용입니다.
             </p>
           </header>
 
