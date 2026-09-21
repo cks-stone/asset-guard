@@ -26,3 +26,6 @@ programs/*/target
 # TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# 시연 영상 스크립트 (팀 내부 자료 — 버전관리 제외)
+docs/demo_script.md

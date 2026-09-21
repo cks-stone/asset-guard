@@ -15,6 +15,10 @@ const devSchema = z.object({
 const serverSchema = devSchema.extend({
   // 관리자 지갑 화이트리스트 (콤마 구분 base58) — 서버 전용
   ADMIN_WALLETS: z.string().optional(),
+  // AI 챗봇 — Gemini API 키 (서버 전용, 절대 브라우저 노출 금지)
+  GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
+  // 챗봇 모델 (기본 gemini-2.5-flash, env로 오버라이드)
+  CHAT_MODEL: z.string().min(1).optional(),
   // 서버 전용 결제 지갑 개인키 (base58, 절대 브라우저 노출 금지)
   FEE_PAYER_SECRET: z.string().min(1).optional(),
 });
@@ -40,6 +44,8 @@ export function getEnv(): SolanaEnv {
     NEXT_PUBLIC_PRIVY_CLIENT_ID: process.env.NEXT_PUBLIC_PRIVY_CLIENT_ID,
     NEXT_PUBLIC_FEE_PAYER_ADDRESS: process.env.NEXT_PUBLIC_FEE_PAYER_ADDRESS,
     ADMIN_WALLETS: process.env.ADMIN_WALLETS,
+    GOOGLE_GENERATIVE_AI_API_KEY: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    CHAT_MODEL: process.env.CHAT_MODEL,
     FEE_PAYER_SECRET: process.env.FEE_PAYER_SECRET,
   });
   if (!parsed.success) {

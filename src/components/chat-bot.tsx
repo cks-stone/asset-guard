@@ -2,13 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { CHAT_MENUS, GENERIC_REPLY } from "@/lib/chat/menus";
+import { CHAT_MENUS } from "@/lib/chat/menus";
+import { useWallet } from "@/lib/wallet/wallet-context";
 
 type ChatRole = "user" | "bot";
 
 interface ChatMessage {
   role: ChatRole;
   text: string;
+  pending?: boolean;
 }
 
 const CHAT_MIN_W = 320;
@@ -32,11 +34,14 @@ function ChatBubbleIcon({ className }: { className?: string }) {
 }
 
 export function ChatBot() {
+  const { publicKey } = useWallet();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "bot", text: "무엇을 도와드릴까요?" },
   ]);
   const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   // 패널 가로/세로 크기(px) — 우하단 핸들 드래그로 사용자가 임의 조절 가능.
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
@@ -79,23 +84,84 @@ export function ChatBot() {
     window.addEventListener("pointerup", onUp);
   };
 
-  const pushMessages = (userText: string, botText: string) => {
+  const pushPending = (userText: string) => {
     setInput("");
     setMessages((prev) => [
       ...prev,
       { role: "user", text: userText },
-      { role: "bot", text: botText },
+      { role: "bot", text: "", pending: true },
     ]);
   };
 
+  const replacePending = (botText: string, error = false) => {
+    setMessages((prev) => {
+      const next = [...prev];
+      const last = next[next.length - 1];
+      if (last && last.pending) {
+        next[next.length - 1] = {
+          role: "bot",
+          text: error ? `(오류) ${botText}` : botText,
+        };
+      } else if (error) {
+        next.push({ role: "bot", text: `(오류) ${botText}` });
+      }
+      return next;
+    });
+  };
+
+  const askAi = async (latestText: string, userText?: string) => {
+    if (busyRef.current) return;
+    if (!latestText.trim()) return;
+
+    const history = messages
+      .filter((m) => !m.pending)
+      .map((m) => ({
+        role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+        content: m.text,
+      }));
+
+    if (!publicKey) {
+      pushPending(userText ?? latestText);
+      replacePending("지갑을 먼저 연결한 뒤 다시 시도해 주세요.");
+      return;
+    }
+
+    busyRef.current = true;
+    setBusy(true);
+    pushPending(userText ?? latestText);
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-wallet": publicKey },
+        body: JSON.stringify({
+          messages: [...history, { role: "user" as const, content: latestText }],
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as
+        | { text?: string; error?: string }
+        | null;
+      if (!res.ok) throw new Error(json?.error ?? `HTTP ${res.status}`);
+      const reply = (json?.text ?? "").trim();
+      if (!reply) throw new Error("응답이 비어 있습니다");
+      replacePending(reply);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "AI 응답을 생성하지 못했습니다.";
+      replacePending(`${msg} — 잠시 후 다시 시도해 주세요.`, true);
+    } finally {
+      busyRef.current = false;
+      setBusy(false);
+    }
+  };
+
   const handleMenu = (menu: (typeof CHAT_MENUS)[number]) => {
-    pushMessages(menu.label, menu.reply);
+    setInput("");
+    void askAi(menu.prompt, menu.label);
   };
 
   const handleSend = () => {
     const text = input.trim();
     if (!text) return;
-    pushMessages(text, GENERIC_REPLY);
+    void askAi(text);
   };
 
   if (!open) {
@@ -124,7 +190,9 @@ export function ChatBot() {
           </span>
           <div>
             <p className="text-sm font-semibold">Asset-Guard 챗봇</p>
-            <p className="text-[10px] text-neutral-500">AI 답변 준비 중</p>
+            <p className="text-[10px] text-neutral-500">
+              {busy ? "답변 생성 중…" : "Gemini 연동"}
+            </p>
           </div>
         </div>
         <button
@@ -151,7 +219,11 @@ export function ChatBot() {
                     : "rounded-bl-sm border border-neutral-800 bg-neutral-800/60 text-neutral-100"
                 }`}
               >
-                {m.text}
+                {m.pending ? (
+                  <span className="animate-pulse">답변 작성 중…</span>
+                ) : (
+                  m.text
+                )}
               </div>
             </div>
           ))}
@@ -177,7 +249,7 @@ export function ChatBot() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleSend();
+            if (e.key === "Enter" && !busy) handleSend();
           }}
           placeholder="궁금한 점을 입력하세요"
           className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm outline-none placeholder:text-neutral-500 focus:border-violet-500"
@@ -185,7 +257,7 @@ export function ChatBot() {
         <button
           type="button"
           onClick={handleSend}
-          disabled={!input.trim()}
+          disabled={!input.trim() || busy}
           className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500 disabled:opacity-40"
         >
           보내기

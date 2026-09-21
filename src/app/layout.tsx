@@ -15,8 +15,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <body className="min-h-screen bg-neutral-950 text-neutral-100 antialiased">
-        <AppProviders>{children}</AppProviders>
-        <ChatBot />
+        <AppProviders>
+          {children}
+          <ChatBot />
+        </AppProviders>
       </body>
     </html>
   );
