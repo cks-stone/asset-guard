@@ -483,6 +483,25 @@ export function AdminConsole() {
     );
   }
 
+  // 표시 정렬: 이전 요청이 진행 중인 자산(수신자 승인 대기 → 수신자 승인)을 최상단에 배치.
+  const orderedAssets = useMemo(() => {
+    const transferRank = (a: RentalAssetRow) => {
+      if (
+        !a.pending_to_wallet ||
+        a.pending_receiver_rejected_at ||
+        a.pending_approved_at
+      ) {
+        return 2;
+      }
+      return a.pending_receiver_approved_at ? 1 : 0;
+    };
+    return [...assets].sort((x, y) => {
+      const d = transferRank(x) - transferRank(y);
+      if (d !== 0) return d;
+      return y.management_no.localeCompare(x.management_no);
+    });
+  }, [assets]);
+
   return (
     <div className="w-full max-w-[1600px] space-y-6">
       {error && (
@@ -561,7 +580,7 @@ export function AdminConsole() {
               </tr>
             </thead>
             <tbody>
-              {assets.map((a) => (
+              {orderedAssets.map((a) => (
                 <tr key={a.management_no} className={`border-b border-neutral-800/70 align-middle${flashNos.has(a.management_no) ? " row-blink" : ""}`}>
                   <td className="px-3 py-2">
                     <input

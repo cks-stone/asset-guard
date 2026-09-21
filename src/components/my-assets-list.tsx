@@ -120,15 +120,24 @@ export function MyAssetsList() {
 
   // 렌탈 목록에 표시할 행: 내 담당(managed_by) 자산 + 내게 이전 요청이 온 인입 자산.
   // 인입 자산은 목록에서 바로 인수 승인/거절을 처리할 수 있도록 함께 노출.
+  // 정렬: 이전 흐름에 관여된(내가 요청한 이전 / 내게 요청이 온 이전) 자산을 최상단에 배치.
   const visibleAssets = useMemo(() => {
     const byNo = new Map<string, RentalAssetRow & { incoming: boolean }>();
     for (const a of assets) byNo.set(a.management_no, { ...a, incoming: false });
     for (const a of incomingAssets) {
       byNo.set(a.management_no, { ...a, incoming: true });
     }
-    return [...byNo.values()].sort((x, y) =>
-      y.management_no.localeCompare(x.management_no),
-    );
+    const transferRank = (r: RentalAssetRow & { incoming: boolean }) => {
+      // 내게 온 이전(incoming) 또는 내가 보낸 진행 중 이전(pending)이면 최상단
+      const active =
+        (r.incoming || !!r.pending_to_wallet) && !r.pending_receiver_rejected_at;
+      return active ? 0 : 1;
+    };
+    return [...byNo.values()].sort((x, y) => {
+      const d = transferRank(x) - transferRank(y);
+      if (d !== 0) return d;
+      return y.management_no.localeCompare(x.management_no);
+    });
   }, [assets, incomingAssets]);
 
   const refreshIncoming = useCallback(async (quiet = false) => {
