@@ -26,6 +26,13 @@ const statusBadge: Record<string, string> = {
   계약종료: "bg-neutral-500/15 text-neutral-400",
 };
 
+// 자산 등록 사용자 select 용 인사(직원) 목록 (GET /api/hr-people)
+interface HrPerson {
+  user_name: string;
+  division: string | null;
+  department: string | null;
+}
+
 const billingCycleLabels: Record<BillingCycle, string> = {
   월납: "월납",
   연납: "연납",
@@ -68,7 +75,29 @@ export function MyAssetsList() {
   const [busy, setBusy] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [transferTo, setTransferTo] = useState<Record<string, string>>({});
+  const [hrPeople, setHrPeople] = useState<HrPerson[]>([]);
   const [acting, setActing] = useState<string | null>(null);
+
+  // 자산 등록 모달 사용자 select — 로그인 사용자 공개 인사 목록 로드
+  const loadHrPeople = useCallback(async () => {
+    if (!publicKey) return;
+    try {
+      const res = await fetch("/api/hr-people", {
+        headers: { "x-wallet": publicKey },
+      });
+      const json = (await readJson(res)) as {
+        error?: string;
+        data?: HrPerson[];
+      };
+      if (res.ok) setHrPeople(json.data ?? []);
+    } catch {
+      // 목록 로드 실패 시 select 는 빈 값으로만 동작한다.
+    }
+  }, [publicKey]);
+
+  useEffect(() => {
+    if (formOpen) void loadHrPeople();
+  }, [formOpen, loadHrPeople]);
 
   // 변경 감지용 이전 스냅샷 — 폴링/포커스 재조회 시 바뀐 행만 5초간 깜빡이게 해 새로고침 없이 변화를 보여준다.
   const prevAssetsRef = useRef<RentalAssetRow[]>([]);
@@ -639,7 +668,7 @@ export function MyAssetsList() {
               </button>
             </div>
             <p className="mt-1 text-xs text-neutral-500">
-              로그인한 사용자는 누구나 렌탈 자산을 등록할 수 있습니다.
+              사용자는 등록된 인사 프로필(employee_profiles)에서 선택합니다. 새 인원은 인사 정보 관리에서 먼저 등록해야 합니다.
             </p>
 
             <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -685,12 +714,29 @@ export function MyAssetsList() {
                 placeholder="제조사 (예: Dell)"
                 className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
               />
-              <input
+              <select
                 value={form.user_name}
-                onChange={(e) => setForm({ ...form, user_name: e.target.value })}
-                placeholder="현재 사용자 (예: 홍길동)"
+                onChange={(e) => {
+                  const name = e.target.value;
+                  const person = hrPeople.find((p) => p.user_name === name);
+                  setForm({
+                    ...form,
+                    user_name: name,
+                    division: person?.division ?? (name ? "" : form.division),
+                    department: person?.department ?? (name ? "" : form.department),
+                  });
+                }}
                 className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
-              />
+              >
+                <option value="">사용자 선택 (인사 프로필 미배정)</option>
+                {hrPeople.map((p) => (
+                  <option key={p.user_name} value={p.user_name}>
+                    {p.user_name}
+                    {(p.division || p.department) &&
+                      ` · ${[p.division, p.department].filter(Boolean).join(" / ")}`}
+                  </option>
+                ))}
+              </select>
               <input
                 value={form.division}
                 onChange={(e) => setForm({ ...form, division: e.target.value })}

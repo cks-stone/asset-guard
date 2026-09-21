@@ -10,6 +10,37 @@
 
 DELETE FROM public.rental_assets;
 
+-- FK(0016) 선행: 렌탈 자산이 참조하는 지갑 명부 · 인사 프로필을 먼저 등록한다
+-- (rental_assets.user_name → employee_profiles, managed_by → wallet_labels)
+INSERT INTO public.wallet_labels (wallet_address, label)
+VALUES
+  ('BbixZu6Xk9NMRgpxPySdNn8vHyQTkzJSYLvFkK5fg9DM', 'BbixZu…fg9DM'),
+  ('9uwp42cTXJJr8Sakp7Zs9UTEiVSjUZPEVkSMyau6o2kC', '9uwp42…o2kC')
+ON CONFLICT (wallet_address) DO NOTHING;
+
+INSERT INTO public.employee_profiles (user_name, division, department, employment_status, work_location)
+VALUES
+  ('홍길동', 'A부문', 'AAAA팀', '재직', '본사'),
+  ('김철수', 'A부문', 'BBBB팀', '재직', '본사'),
+  ('김민지', 'A부문', 'AAAA팀', '재직', '본사'),
+  ('이영희', 'B부문', 'CCCC팀', '재직', '본사'),
+  ('박민수', 'B부문', 'DDDD팀', '재직', '본사'),
+  ('정우진', 'A부문', 'AAAA팀', '재직', '본사'),
+  ('최하늘', 'C부문', 'EEEE팀', '재직', '본사'),
+  ('오세훈', 'C부문', 'FFFF팀', '재직', '본사'),
+  ('임성민', 'B부문', 'CCCC팀', '재직', '본사'),
+  ('윤나래', 'C부문', 'FFFF팀', '재직', '본사'),
+  ('서준호', 'A부문', 'BBBB팀', '재직', '본사'),
+  ('한지훈', 'B부문', 'DDDD팀', '재직', '본사'),
+  ('강다은', 'C부문', 'EEEE팀', '재직', '본사'),
+  ('신예원', 'B부문', 'CCCC팀', '재직', '본사'),
+  ('장유진', 'A부문', 'AAAA팀', '재직', '본사'),
+  ('배소현', 'C부문', 'FFFF팀', '재직', '본사'),
+  ('남궁희', 'B부문', 'DDDD팀', '재직', '본사'),
+  ('구본승', 'C부문', 'EEEE팀', '재직', '본사'),
+  ('문상혁', 'A부문', 'BBBB팀', '재직', '본사')
+ON CONFLICT (user_name) DO NOTHING;
+
 INSERT INTO public.rental_assets
   (management_no, serial_no, order_no, model_name, manufacturer,
    user_name, division, department, rental_company,

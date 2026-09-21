@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin, ensureWalletLabels } from "@/lib/supabase/server";
 import { getAdminWalletFromRequest } from "@/lib/admin";
 import { executeCreateHandovers } from "@/lib/solana/execute-handover";
 import type { RentalAssetRow } from "@/lib/supabase/types";
@@ -207,6 +207,12 @@ export async function POST(req: NextRequest) {
       }
 
       // 이관 이력 기록 (실패해도 이관 자체는 완료)
+      // FK(wallet_labels) 보장 — 이관 당사자 지갑이 없으면 기본 명칭으로 자동 등록
+      try {
+        await ensureWalletLabels(supabase, [asset.managed_by, to_wallet]);
+      } catch (ensureErr) {
+        console.error("[approve-batch] 지갑 명부 자동 등록 실패:", ensureErr);
+      }
       const { error: histErr } = await supabase.from("transfer_history").insert({
         management_no: asset.management_no,
         from_wallet: asset.managed_by,

@@ -77,6 +77,7 @@
 | `/api/monthly-report` | GET | 로그인 | 월간 리포팅(남은 기간 · 권장 조치) |
 | `/api/employees` | GET | 관리자 | 인사 프로필 조회(렌탈리스트 자동 제안 포함) |
 | `/api/employees` | POST | 관리자 | 인사 프로필 등록/수정(upsert) |
+| `/api/hr-people` | GET | 로그인 | 인사 목록(이름·부문·팀) — 자산 등록 사용자 select 용 |
 | `/api/wallet-balance` | GET | 로그인 | SOL 잔액 조회 |
 | `/api/wallet-label` | GET/POST | 로그인 | 지갑 프로필(부문/팀) 저장·조회 |
 | `/api/wallet-directory` | GET | 로그인 | 지갑 디렉토리 탐색 |
@@ -88,15 +89,21 @@
 
 - `public.rental_assets` — 자산 마스터 (관리번호·시리얼·모델·렌탈·청구·사용자)
   - `status`: `정상사용` / `유휴` / `계약종료`
-  - `managed_by`: 담당 지갑 (0006)
+  - `managed_by`: 담당 지갑 (0006) → `wallet_labels.wallet_address` FK (0016)
+  - `user_name`: 사용자는 `employee_profiles` 기준 select(0016 FK) — 등록 시 프로필 존재 검증
   - `category` (0013), `location` (0014), `order_no`: 발주번호
   - `transfer_tx`, `transferred_at`: 온체인 이전 트랜잭션 (0007)
   - `pending_to_wallet`, `pending_requested_at`, `pending_approved_at`, `pending_approved_by`: 관리자 승인 대기 상태 (0008)
   - `pending_receiver_approved_at`, `pending_receiver_rejected_at`: 수신자 인수 승인/거절 (0010)
 - `public.wallet_labels` — 지갑별 프로필/부문·팀 (0009 기본, 0011 분·팀 추가), 디렉토리 인덱스
-- `public.transfer_history` — 이전 이력 (0009)
+- `public.transfer_history` — 이전 이력 (0009) → `management_no` FK `rental_assets`, `from/to_wallet` FK `wallet_labels` (0016)
 - `public.employee_profiles` — 인사 프로필 (0014, `user_name` 유니크 upsert; 인사 상태/근무 위치/직급/입·퇴사일; 0015에서 `division`/`department` 부문·팀 추가)
 - `public.assets` / `public.handovers` — (구버전 M1~, 0004에서 정리)
+
+> **FK 연결 (0016, Schema Visualizer)**: `employee_profiles ─ rental_assets ─ transfer_history ─ wallet_labels`
+> 전체가 외래 키로 연결된다. FK는 `NOT VALID` 로 추가되어 기존 데이터는 유지하며
+> 신규 쓰기부터 강제한다(자산 등록 시 미등록 인사 프로필 거부, 미등록 담당 지갑은 기본 명칭 자동 등록).
+> 사용자 명칭·부문/팀은 프로필 저장 API(`/api/wallet-label`/`/api/employees`)에서 별도 관리한다.
 
 > **온체인 기록**: 이관 증거는 자산별 PDA 계정이 아니라 **트랜잭션 서명 + `HandoverCreated` 이벤트 로그**(무계정, account-less)로 남는다. 자세한 내용은 [BLOCKCHAIN_DESIGN.md](./BLOCKCHAIN_DESIGN.md) 참고.
 

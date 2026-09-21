@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+import { getSupabaseAdmin, ensureWalletLabels } from "@/lib/supabase/server";
 import { getAdminWalletFromRequest, getWalletFromRequest } from "@/lib/admin";
 import type { RentalAssetRow, RentalAssetStatus } from "@/lib/supabase/types";
 
@@ -178,9 +178,39 @@ export async function POST(req: NextRequest) {
       );
     }
     // 최초 등록자 = 담당 지갑 (인수인계로 이후 이전됨)
+    // FK(wallet_labels) 보장 — 미등록 생성자 지갑은 기본 명칭으로 자동 등록
+    try {
+      await ensureWalletLabels(supabase, [wallet]);
+    } catch (ensureErr) {
+      return errorResponse(
+        ensureErr instanceof Error ? ensureErr.message : "지갑 명부를 확인할 수 없습니다",
+        500,
+      );
+    }
+
+    // FK(employee_profiles) 보장 — 사용자는 등록된 인사 프로필에서만
+    if (parsed.data.user_name && parsed.data.user_name.trim()) {
+      const { data: profile, error: profileErr } = await supabase
+        .from("employee_profiles")
+        .select("user_name")
+        .eq("user_name", parsed.data.user_name.trim())
+        .maybeSingle();
+      if (profileErr) return errorResponse(profileErr.message, 500);
+      if (!profile) {
+        return errorResponse(
+          `"${parsed.data.user_name}" 은(는) 등록된 인사 프로필이 없습니다. 인사 정보 관리에서 먼저 등록해 주세요.`,
+          400,
+        );
+      }
+    }
+
     const { data, error } = await supabase
       .from("rental_assets")
-      .insert({ ...parsed.data, managed_by: wallet })
+      .insert({
+        ...parsed.data,
+        user_name: parsed.data.user_name?.trim() || null,
+        managed_by: wallet,
+      })
       .select()
       .single();
     if (error) return errorResponse(error.message, 409);

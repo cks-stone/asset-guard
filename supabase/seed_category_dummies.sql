@@ -10,6 +10,15 @@
 DELETE FROM public.rental_assets
 WHERE management_no >= 'AST-2026-0021' AND management_no <= 'AST-2026-0120';
 
+-- FK(0016) 선행: 담당 지갑(9uwp42…) · 사용자(최강석) 인사 프로필 선등록
+INSERT INTO public.wallet_labels (wallet_address, label)
+VALUES ('9uwp42cTXJJr8Sakp7Zs9UTEiVSjUZPEVkSMyau6o2kC', '9uwp42…o2kC')
+ON CONFLICT (wallet_address) DO NOTHING;
+
+INSERT INTO public.employee_profiles (user_name, division, department, employment_status, work_location)
+VALUES ('최강석', 'A부문', 'AAAA팀', '재직', '본사')
+ON CONFLICT (user_name) DO NOTHING;
+
 INSERT INTO public.rental_assets
   (management_no, serial_no, order_no, model_name, manufacturer,
    user_name, division, department, rental_company,
