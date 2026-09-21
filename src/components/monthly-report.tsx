@@ -168,7 +168,7 @@ export function MonthlyReport() {
                       <th className="px-3 py-2 text-left font-medium">모델명</th>
                       <th className="px-3 py-2 text-left font-medium">사용자</th>
                       <th className="px-3 py-2 text-left font-medium">부문/팀</th>
-                      <th className="px-3 py-2 text-left font-medium">위치</th>
+                      <th className="px-3 py-2 text-left font-medium">자산위치</th>
                       <th className="px-3 py-2 text-left font-medium">인사상태</th>
                       <th className="px-3 py-2 text-left font-medium">근무위치</th>
                       <th className="px-3 py-2 text-left font-medium">권장 조치</th>
@@ -234,7 +234,7 @@ export function MonthlyReport() {
                       <th className="px-3 py-2 text-left font-medium">모델명</th>
                       <th className="px-3 py-2 text-left font-medium">사용자</th>
                       <th className="px-3 py-2 text-left font-medium">부문/팀</th>
-                      <th className="px-3 py-2 text-left font-medium">위치</th>
+                      <th className="px-3 py-2 text-left font-medium">자산위치</th>
                       <th className="px-3 py-2 text-left font-medium">종료일</th>
                       <th className="px-3 py-2 text-left font-medium">권장 조치</th>
                     </tr>

@@ -112,7 +112,7 @@ export function IdleAssetsList() {
                 <th className="px-3 py-2 font-medium">제조사</th>
                 <th className="px-3 py-2 font-medium">사용자</th>
                 <th className="px-3 py-2 font-medium">부문/팀</th>
-                <th className="px-3 py-2 font-medium">위치</th>
+                <th className="px-3 py-2 font-medium">자산위치</th>
                 <th className="px-3 py-2 font-medium">렌탈사</th>
                 <th className="px-3 py-2 font-medium">청구</th>
                 <th className="px-3 py-2 font-medium">렌탈료</th>

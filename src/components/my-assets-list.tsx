@@ -430,7 +430,7 @@ export function MyAssetsList() {
                 <th className="px-3 py-2 font-medium">제조사</th>
                 <th className="px-3 py-2 font-medium">사용자</th>
                 <th className="px-3 py-2 font-medium">부문/팀</th>
-                <th className="px-3 py-2 font-medium">위치</th>
+                <th className="px-3 py-2 font-medium">자산위치</th>
                 <th className="px-3 py-2 font-medium">렌탈사</th>
                 <th className="px-3 py-2 font-medium">청구</th>
                 <th className="px-3 py-2 font-medium">렌탈료</th>
@@ -702,7 +702,7 @@ export function MyAssetsList() {
               <input
                 value={form.location}
                 onChange={(e) => setForm({ ...form, location: e.target.value })}
-                placeholder="위치 (예: B-XX지사)"
+                placeholder="자산위치 (예: B-XX지사)"
                 className="rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm"
               />
               <input
