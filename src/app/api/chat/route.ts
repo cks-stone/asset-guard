@@ -3,7 +3,7 @@ import { z } from "zod";
 import { generateText, stepCountIs } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { getAdminWalletFromRequest, getWalletFromRequest } from "@/lib/admin";
-import { SYSTEM_PROMPT } from "@/lib/chat/system";
+import { buildSystemPrompt } from "@/lib/chat/system";
 import { buildChatTools } from "@/lib/chat/tools";
 
 export const runtime = "nodejs";
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
 
     const { text } = await generateText({
       model,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(),
       messages,
       tools: buildChatTools({ wallet, isAdmin }),
       maxRetries: 1,

@@ -18,3 +18,21 @@ export const SYSTEM_PROMPT = `당신은 Asset-Guard(사내 렌탈 자산 인수�
 7. 이관 절차·지갑 연결·리포팅 규칙 등 프로세스 질문은 시스템 개요와 도구 결과를 근거로 안내한다.
 8. 답변은 마크다운 목록/표를 활용하되 과하게 길지 않게 작성한다. 온체인 트랜잭션 서명은 앞 8자+뒤 4자만 축약해 표시한다.
 9. 잘못된 유저 입력(존재하지 않는 관리번호 등)은 도구 결과를 근거로 주저 없이 안내한다.`;
+
+/** 오늘 날짜(Asia/Seoul 기준)를 YYYY-MM-DD 문자열로 반환 */
+function todayInKst(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul" }).format(date);
+}
+
+/**
+ * 시스템 프롬프트 조립 — 현재 시점(오늘 날짜)을 명시해
+ * 모델이 지식 기반 날짜(예: 2024년) 대신 실제 '오늘'을 기준 시점으로 쓰도록 한다.
+ * (데이터 필터링은 서버 new Date() 기반이라 이미 당일 기준이며, 오직 프롬프트 문구만 교정)
+ */
+export function buildSystemPrompt(date = new Date()): string {
+  return `${SYSTEM_PROMPT}
+
+## 현재 시점 기준
+- 오늘 날짜는 ${todayInKst(date)}입니다.
+- '이번 달', '기준 시점', 만기(계약 종료) D-N 계산은 반드시 오늘 날짜를 기준으로 판단하고, 답변에 기준 날짜를 명시하세요.`;
+}
