@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/next";
 import { AppProviders } from "@/components/app-providers";
 import { ChatBot } from "@/components/chat-bot";
 import "./globals.css";
@@ -19,6 +20,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           {children}
           <ChatBot />
         </AppProviders>
+        <Analytics />
       </body>
     </html>
   );
